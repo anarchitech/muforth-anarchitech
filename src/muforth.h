@@ -10,63 +10,34 @@
 
 #include "env.h"
 
-/* Support for putting 32-bit values into cell (64-bit) sized containers -
- * for support of 64-bit muforth on 32-bit platforms.
+/*
+ * Heap addrs are the size of a machine pointer; stack and variable values
+ * - aka cells - are 64 bits, regardless of architecture.
  */
-#ifdef MU_ADDR_32
 
-#ifdef MU_LITTLE_ENDIAN
-/* LE 32 */
-#define CELL_T(type)    struct { type value; uintptr_t padding; }
-#define CELL(value)     { value, 0 }
+typedef uintptr_t  addr;    /* intptr_t and uintptr_t are integer types that
+                                are the same size as a native pointer. Whether
+                                this type is unsigned or not will affect how
+                                32-bit addresses are treated when pushed onto
+                                a 64-bit stack: signed will sign-extend,
+                                unsigned will zero-extend. */
 
-#else
-/* BE 32 */
-#define CELL_T(type)    struct { uintptr_t padding; type value; }
-#define CELL(value)     { 0, value }
+typedef  int64_t    cell;    /* stack or variable value */
+typedef uint64_t   ucell;    /* unsigned cell */
 
-#endif
-
-#define _(cell)         (cell).value
-#define _STAR(pcell)    (pcell)->value
-
-#else  /* 64-bit */
-
-/* These are no-ops for 64-bit. */
-#define CELL_T(type)    type
-#define CELL(value)     (value)
-#define _(cell)         (cell)
-#define _STAR(pcell)    *(pcell)
-
-#endif
-
-/* Every kind of cell - address, data, stack - is 64 bits! */
-typedef  int64_t   cell;
-typedef uint64_t  ucell;
-
-/* address type - for casting */
-typedef uintptr_t  addr;   /* intptr_t and uintptr_t are integer types that
-                             are the same size as a native pointer. Whether
-                             this type is unsigned or not will affect how
-                             32-bit addresses are treated when pushed onto
-                             a 64-bit stack: signed will sign-extend,
-                             unsigned will zero-extend. */
-
-/* pointer and cell types */
-typedef void (*code)(void);         /* POINTER to word's machine code */
-typedef CELL_T(code)  code_cell;    /* CELL wrapper of code */
-typedef code_cell    *xt;           /* POINTER to code; aka "execution token" */
-typedef CELL_T(xt)    xt_cell;      /* CELL wrapper of xt */
+/* pointer types - these fit into an addr */
+typedef void (*code)(void);     /* POINTER to word's machine code */
+typedef code *xt;               /* POINTER to code field */
 
 /* Forth VM execution registers */
-extern cell     *SP;    /* parameter stack pointer */
-extern cell     *RP;    /* return stack pointer */
-extern xt_cell  *IP;    /* instruction pointer */
-extern xt        W;     /* on entry, points to the current Forth word */
+extern cell  *SP;   /* parameter stack pointer */
+extern cell  *RP;   /* return stack pointer */
+extern xt    *IP;   /* instruction pointer; points to an xt */
+extern xt     W;    /* on entry, points to the current Forth word */
 
 /* dictionary size */
-/* Cells are 64 bits. Let's allocate 1M cells - 8MB of heap. */
-#define DICT_CELLS     (1024 * 1024)
+/* Let's allocate 8MiB of heap, regardless of addr size. */
+#define HEAP_ADDRS      ((8 * 1024 * 1024) / sizeof(addr))
 
 /* data and return stacks */
 /* NOTE: Even on 32-bit platforms the R stack is 64 bits wide! This makes
@@ -99,8 +70,13 @@ extern cell rstack[];
 #define RPUSH(n)    (*--RP = (cell)(n))
 #define RPOP        (*RP++)
 
-#define ALIGN_SIZE  sizeof(cell)
-#define ALIGNED(x)  (((intptr_t)(x) + ALIGN_SIZE - 1) & -ALIGN_SIZE)
+/* This is the alignment of *addrs* in the heap, *not* cell-sized things! */
+#define ADDR_ALIGN_SIZE  sizeof(addr)
+#define ADDR_ALIGNED(x)  (((intptr_t)(x) + ADDR_ALIGN_SIZE - 1) & -ADDR_ALIGN_SIZE)
+
+/* This is the alignment of *cells*. */
+#define CELL_ALIGN_SIZE  sizeof(cell)
+#define CELL_ALIGNED(x)  (((intptr_t)(x) + CELL_ALIGN_SIZE - 1) & -CELL_ALIGN_SIZE)
 
 /*
  * struct string is a "normal" string: pointer to the first character, and

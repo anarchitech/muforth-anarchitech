@@ -15,10 +15,11 @@
  */
 
 /*
- * Dictionary is kept cell-aligned. Cells are 64 bits.
+ * Dictionary is kept addr-aligned. Addrs are the size of a machine
+ * address: 32 bits on 32-bit machines, 64 bits on 64-bit machines.
  */
-static cell  *ph0;  /* pointer to start of heap space */
-static cell  *ph;   /* ptr to next free cell in heap space */
+       addr *heap;  /* pointer to start of heap space */
+static addr *hp;    /* heap pointer: points to next free addr in heap space */
 
 /*
  * A struct dict_name represents what Forth folks often call a "head" - a
@@ -58,7 +59,7 @@ static cell  *ph;   /* ptr to next free cell in heap space */
  * adopts (as dforth did before it). Instead of -following- the link field,
  * the name -precedes- it, starting with padding, then the characters of
  * the name, then its length (one byte), followed directly by the link.
- * (The padding puts the link on a cell boundary.)
+ * (The padding puts the link on an addr boundary.)
  *
  * Experienced C programmers will immediately notice a problem: structs
  * (such as the one we want to use to define the structure of dictionary
@@ -69,40 +70,34 @@ static cell  *ph;   /* ptr to next free cell in heap space */
  * and bug-free code, but how?
  *
  * My solution is a bit weird, but it works rather well. Since I know that
- * there will be at least -one- cell (7 bytes and a length) of name I will
- * define a struct that represents only the last seven characters of the
- * name, the length, and the link; the previous characters are "off the
- * map" as far as C is concerned, but there is an easy way to address them.
- * (To get to the beginning of a name, take the address of the suffix, add
- * the SUFFIX_LEN (7), and subtract the length.)
+ * the characters of the name will consume at least one addr (3 or 7 bytes,
+ * depending on the machine, and a length byte), I define a struct that
+ * represents only the last 3 or 7 characters of the name, the length, and
+ * the link; the previous characters are "off the map" as far as C is
+ * concerned, but there is an easy way to address them. (To get to the
+ * beginning of a name, take the address of the suffix, add the SUFFIX_LEN,
+ * and subtract the length.)
  *
  * Links still point to links; adjustments are made in a couple of places
  * to convert a pointer to a link into a pointer to a name entry (struct
  * dict_name).
  */
 
-
-/* This is the only way C will let us define a type that points to itself. */
-struct link_field
-{
-    CELL_T(struct link_field *) cell;
-};
-
-typedef struct link_field link_cell;
-
-#define FOLLOW_LINK(plink)  _(plink->cell)
-#define LINK(link)          _(link.cell)
+#define FOLLOW_LINK(plink)  (addr **)(*plink)
+#define MAKE_LINK(plink)    (addr *)(plink)
+#define NULL_LINK           NULL
 
 /*
- * Cells are 64 bits, so ALIGN_SIZE is 8.
+ * Addrs can be 32 or 64 bits, depending on the machine; accordingly,
+ * ADDR_ALIGN_SIZE is either 4 or 8.
  */
-#define SUFFIX_LEN  (ALIGN_SIZE - 1)
+#define SUFFIX_LEN  (ADDR_ALIGN_SIZE - 1)
 
 struct dict_name
 {
-    char            suffix[SUFFIX_LEN];     /* last 7 characters of name */
+    char            suffix[SUFFIX_LEN];     /* last 3 or 7 characters of name */
     unsigned char   length;                 /* 255 max; 0 means hidden */
-    link_cell       link;                   /* link to preceding link */
+    addr            *link;                  /* link to preceding link */
 };
 
 /*
@@ -112,7 +107,7 @@ struct dict_name
 struct dict_entry
 {
     struct dict_name    name;
-    code_cell           code;
+    code                code;
 };
 
 /* bogus C-style dictionary init */
@@ -137,38 +132,54 @@ struct inm initial_runtime[] = {
     { NULL, NULL }
 };
 
-void mu_push_h0()       /* push address of start of dictionary */
-{
-    PUSH_ADDR(ph0);
-}
+/* @heap pushes the heap origin address */
+void mu_at_heap()    { PUSH_ADDR(heap); }
+
+/* #heap pushes the length of the heap in bytes. */
+void mu_size_heap()  { PUSH(HEAP_ADDRS * sizeof(addr)); }
 
 void mu_here()          /* push current _value_ of heap pointer */
 {
-    PUSH_ADDR(ph);
+    PUSH_ADDR(hp);
+}
+
+/*
+ * addr, (addr comma) copies an addr-sized pointer on the top of the stack
+ * into the dictionary, and advances the heap pointer by one addr. Note
+ * that hp is kept addr-aligned.
+ */
+
+void mu_addr_comma()
+{
+    *hp++ = POP;
 }
 
 /*
  * , (comma) copies the cell on the top of the stack into the dictionary,
- * and advances the heap pointer by one cell. Note that ph is kept
- * cell-aligned.
+ * and advances the heap pointer by one cell. Note that hp is kept
+ * addr-aligned - not cell-aligned! (though this might need to change with
+ * different platforms!)
  */
 
 void mu_comma()
 {
-    assert(ALIGNED(ph) == (intptr_t)ph, "misaligned (comma)");
-    *ph++ = POP;
+    *(cell *)hp = POP;
+    hp += sizeof(cell) / sizeof(addr);
 }
 
 /*
  * allot ( n)
  *
- * Takes a count of bytes, rounds it up to a cell boundary, and adds it to
- * the heap pointer. Again, this keeps ph always aligned.
+ * Takes a count of bytes, rounds it up to an addr boundary, and adds it to
+ * the heap pointer. Again, this keeps hp always addr-aligned.
  */
-void mu_allot()    { ph += ALIGNED(POP) / sizeof(cell); }
+void mu_allot()    { hp += ADDR_ALIGNED(POP) / sizeof(addr); }
 
 /* Align TOP to cell boundary */
-void mu_aligned()  { TOP = ALIGNED(TOP); }
+void mu_aligned()       { TOP = CELL_ALIGNED(TOP); }
+
+/* Align TOP to addr boundary */
+void mu_addr_aligned()  { TOP = ADDR_ALIGNED(TOP); }
 
 /* Type of string compare functions */
 typedef int (*match_fn_t)(const char*, const char*, size_t);
@@ -185,17 +196,18 @@ void mu_minus_case()  { match = strncasecmp; }
 
 /*
  * find takes a token (a u) and a chain (the head of a vocab word list) and
- * searches for the token on that chain. If found, it returns the address
- * of the code field of the word; if -not- found, it leaves the token (a u)
- * on the stack, and returns false (0).
+ * searches for the token on that chain. If found, it returns an "execution
+ * token" (xt) - the address of the code field - and a true flag; if -not-
+ * found, it leaves the token (a u) on the stack, and returns false.
  */
-/* find  ( a u chain - a u 0 | code -1) */
+/* find  ( a u chain - a u 0 | xt -1) */
 void mu_find()
 {
     char *token = (char *) ST2;
-    cell length = ST1;
+    int length = ST1;
+    addr **plink = (addr **)TOP;
+
     struct dict_entry *pde;
-    link_cell *plink = (link_cell *)TOP;
 
     /*
      * Only search if 0 < length < 256. This prevents us from matching hidden
@@ -203,7 +215,7 @@ void mu_find()
      */
     if (0 < length && length < 256)
     {
-        while ((plink = FOLLOW_LINK(plink)) != NULL)
+        while ((plink = FOLLOW_LINK(plink)) != NULL_LINK)
         {
             /* convert pointer to link to pointer to suffix */
             pde = (struct dict_entry *)(plink - 1);
@@ -215,7 +227,7 @@ void mu_find()
             if ((*match)(pde->name.suffix + SUFFIX_LEN - length, token, length) != 0)
                 continue;
 
-            /* found: drop token, push code address and true flag */
+            /* found: drop token, push code field address and true flag */
             DROP(1);
             ST1 = (addr)&pde->code;
             TOP = -1;
@@ -231,13 +243,11 @@ void mu_find()
 /*
  * new_name creates a new dictionary (name) entry and returns it
  */
-static link_cell *new_name(
-    link_cell *link, char *name, int length, int hidden)
+static addr **new_name(
+    addr **plink, char *name, int length, int hidden)
 {
     struct dict_name *pnm;  /* the new name */
     int prefix_bytes;
-
-    assert(ALIGNED(ph) == (intptr_t)ph, "misaligned (new_name)");
 
     /*
      * Since we're using one byte to store the length, cap length at 255.
@@ -246,18 +256,18 @@ static link_cell *new_name(
 
     /*
      * Calculate space for the bytes of the name that don't fit into
-     * suffix[]; align to cell boundary.
+     * suffix[]; align to addr boundary.
      */
-    prefix_bytes = ALIGNED(length - SUFFIX_LEN);
+    prefix_bytes = ADDR_ALIGNED(length - SUFFIX_LEN);
 
     /*
      * Zero name + link + code. While dict started out zeroed, use of pad
      * could have put all kinds of gunk into it.
      */
-    memset(ph, 0, prefix_bytes + sizeof(struct dict_entry));
+    memset(hp, 0, prefix_bytes + sizeof(struct dict_entry));
 
     /* Compute pointer to name struct. */
-    pnm = (struct dict_name *)((intptr_t)ph + prefix_bytes);
+    pnm = (struct dict_name *)((intptr_t)hp + prefix_bytes);
 
     /* Copy name string */
     memcpy(pnm->suffix + SUFFIX_LEN - length, name, length);
@@ -266,13 +276,13 @@ static link_cell *new_name(
     pnm->length = hidden ? 0 : length;
 
     /* Set link pointer */
-    LINK(pnm->link) = link;
+    pnm->link = MAKE_LINK(plink);
 
     /* Allot entry */
-    ph = (cell *)(pnm + 1);
+    hp = (addr *)(pnm + 1);
 
 #ifdef BEING_DEFINED
-    fprintf(stderr, "%p %p %.*s\n", &pnm->link, link, length, name);
+    fprintf(stderr, "%p %p %.*s\n", &pnm->link, plink, length, name);
 #endif
 
     /* Return address of link field */
@@ -284,16 +294,16 @@ static link_cell *new_name(
  * links it onto the chain represented by plink.
  */
 static void new_linked_name(
-    link_cell *plink, char *name, int length)
+    addr **plink, char *name, int length)
 {
     /* create new name & link onto front of chain */
-    FOLLOW_LINK(plink) = new_name(FOLLOW_LINK(plink), name, length, !HIDDEN);
+    *plink = MAKE_LINK(new_name(FOLLOW_LINK(plink), name, length, !HIDDEN));
 }
 
 /* (linked-name)  ( a u chain) */
 void mu_linked_name_()
 {
-    new_linked_name((link_cell *)TOP, (char *)ST2, ST1);
+    new_linked_name((addr **)TOP, (char *)ST2, ST1);
     DROP(3);
 }
 
@@ -322,7 +332,7 @@ void mu_linked_name_()
  *
  * The user can define their own chains.
  *
- * The body of a chain word -- .forth. for instance -- contains a pointer
+ * The body of a chain word - .forth. for instance - contains a pointer
  * to the last defined word on that chain. When executed, a chain word
  * pushes the address of this pointer, which can then be searched (using
  * find) or used to set the variable current, which causes all subsequent
@@ -331,7 +341,7 @@ void mu_linked_name_()
  * Chains are either *sealed* or *anchored*. In a sealed chain the tail
  * link pointer is NULL. Searching a sealed chain will only find words
  * defined in that chain. In an anchored chain, the tail link pointer
- * points into another chain -- the one anchored *to* -- and searches of
+ * points into another chain - the one anchored *to* - and searches of
  * the first chain will continue into the second.
  *
  * There are two ways to do this anchoring: static and dynamic. In static
@@ -380,7 +390,8 @@ void mu_linked_name_()
  */
 static void mu_do_chain()
 {
-    PUSH_ADDR(&W[2]);   /* push the address of muchain's link field */
+    /* push the address of muchain's link field by skipping over "muchain". */
+    PUSH_ADDR(W + sizeof(cell)/sizeof(addr));
 }
 
 /*
@@ -399,44 +410,44 @@ static void mu_do_chain()
  * plink points to the chain that this chain is _named_ in. It will always
  * be the .forth. chain.
  */
-static link_cell *new_chain(
-    link_cell *plink, char *name)
+static addr **new_chain(
+    addr **plink, char *name)
 {
     new_linked_name(plink, name, strlen(name));
-    _STAR((code_cell *)ph++) = mu_do_chain;     /* set code pointer */
+    *hp++ = (addr)mu_do_chain;  /* set code pointer */
     return new_name(NULL, "muchain", 7, HIDDEN);
 }
 
 /*
  * All the words defined by this function are CODE words. Their bodies are
- * defined in C; this routine compiles a code pointer into the dict entry
+ * defined in C; this routine compiles into the dict entry a code pointer
  * that points to the C function.
  */
-static void init_chain(link_cell *plink, link_cell *anchor_link, struct inm *pinm)
+static void init_chain(addr **plink, addr **anchor_link, struct inm *pinm)
 {
     /*
      * Set the beginning, "anchor", link for the chain. For sealed chains,
      * this will be NULL. For chains anchored to other chains, this will be
      * address of the link field of the chain being anchored to.
      */
-    FOLLOW_LINK(plink) = anchor_link;
+    *plink = MAKE_LINK(anchor_link);
 
     for (; pinm->name != NULL; pinm++)
     {
         new_linked_name(plink, pinm->name, strlen(pinm->name));
-        _STAR((code_cell *)ph++) = pinm->code;      /* set code pointer */
+        *hp++ = (addr)pinm->code;   /* set code pointer */
     }
 }
 
 static void allocate()
 {
-    ph0 = (cell *) calloc(DICT_CELLS, sizeof(cell));
+    heap = (addr *)calloc(HEAP_ADDRS, sizeof(addr));
 
-    if (ph0 == NULL)
+    if (heap == NULL)
         die("couldn't allocate memory");
 
     /* init heap pointer */
-    ph = ph0;
+    hp = heap;
 }
 
 /*
@@ -448,9 +459,9 @@ static void allocate()
  *
  * init_dict() sets everything up.
  */
-static link_cell *forth_chain;
-static link_cell *compiler_chain;
-static link_cell *runtime_chain;
+static addr **forth_chain;
+static addr **compiler_chain;
+static addr **runtime_chain;
 
 void muboot_push_forth_chain()
 {
@@ -469,15 +480,13 @@ void muboot_push_runtime_chain()
 
 void init_dict()
 {
-    link_cell forth_bootstrap;  /* we need this to "bootstrap" the .forth. chain */
+    /* we need this to "bootstrap" the .forth. chain */
+    addr *forth_bootstrap = NULL_LINK;
 
     allocate();
 
-    /* First, populate the "bootstrap" forth chain with words defined in C. */
-    init_chain(&forth_bootstrap, NULL, initial_forth);
-
     /*
-     * Next, create in our "bootstrap" forth chain .forth. , .compiler. ,
+     * First, create in our "bootstrap" forth chain .forth. , .compiler. ,
      * and .runtime. chains that look and smell like the ones that will
      * later be created as create/does words. These have a body that looks
      * like a normal word, but the name is always "muchain" and its length
@@ -487,14 +496,11 @@ void init_dict()
     compiler_chain = new_chain(&forth_bootstrap, ".compiler.");
     runtime_chain  = new_chain(&forth_bootstrap, ".runtime.");
 
-    /*
-     * Now that everything is in the bootstrap .forth. chain, set the link
-     * pointer in the real .forth. chain to match.
-     */
-    FOLLOW_LINK(forth_chain) = LINK(forth_bootstrap);
+    /* Populate the .forth. chain with words defined in C. */
+    init_chain(forth_chain, FOLLOW_LINK(&forth_bootstrap), initial_forth);
 
-    /* Now we can populate the .compiler. chain with words defined in C. */
-    init_chain(compiler_chain, NULL, initial_compiler);
+    /* Populate the .compiler. chain with words defined in C. */
+    init_chain(compiler_chain, NULL_LINK, initial_compiler);
 
     /*
      * And we do the same with the .runtime. chain - with a wrinkle. Unlike
@@ -504,3 +510,14 @@ void init_dict()
      */
     init_chain(runtime_chain, forth_chain, initial_runtime);
 }
+
+#ifdef DEBUG_DICT
+void mu_dump()
+{
+    fprintf(stderr, "heap origin %p\n", heap);
+
+    /* Write the dict contents to stdout. */
+    fwrite(heap, sizeof(addr), hp - heap, stdout);
+    fflush(stdout);
+}
+#endif

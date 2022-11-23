@@ -27,14 +27,14 @@ void mu_u2slash()  { TOP = (ucell) TOP >>  1; }
  * Representation of truth values
  *
  * In C, booleans are represent by integers. Zero means false, and anything
- * non-zero means true. But the value returned by a comparison operator --
+ * non-zero means true. But the value returned by a C comparison operator --
  * "<" for example -- is always 0 or 1.
  *
  * Forth works similarly, and in its earliest days, comparison words like
  * "<" or "0=" returned 0 for false and 1 for true. But starting in 1983 or
  * so this was changed. The "standard" way now, in Forth, is to return -1
  * (all ones) for true. This value is more useful, and it can be ANDed with
- * other values to produces useful results without needing to jump.
+ * other values to produce useful results without needing to jump.
  *
  * In the following code you will see the arithmetic negation ("-") of
  * several comparison operators. This simply converts the C true (1) to the
@@ -57,17 +57,27 @@ void mu_u2slash()  { TOP = (ucell) TOP >>  1; }
  *  - Big signed right shifts of *non-negative* values result in all zeros.
  *  - Big signed right shifts of *negative* values result in all ones.
  */
-#define BIGSHIFT  ((ucell) TOP >= (sizeof(cell) * 8))
+#define BIGSHIFT  (TOP >= (sizeof(cell) * 8))
 #define SIGN(x)   -((x) < 0)
 
 void mu_shift_left()    { ST1 = BIGSHIFT ? 0 :         ST1 << TOP; DROP(1); }
 void mu_ushift_right()  { ST1 = BIGSHIFT ? 0 : (ucell) ST1 >> TOP; DROP(1); }
 void mu_shift_right()   { ST1 = BIGSHIFT ? SIGN(ST1) : ST1 >> TOP; DROP(1); }
 
-/* By defining these here, we don't need to export the cell size to Forth.
- * This saves a word in the dictionary. ;-) */
+#ifdef MU_ADDR_32
+    #define ADDR_SHIFT 2
+#else
+    #define ADDR_SHIFT 3
+#endif
+
+/* A cell is the unit of user-visible storage. Always 64 bits. */
 void mu_cells()        { TOP <<= 3; }
-void mu_cell_slash()   { TOP >>= 3; }  /* signed & flooring! */
+void mu_cell_slash()   { TOP >>= 3; }   /* signed & flooring! */
+
+/* An addr is the size of a machine address. It is the fundamental building
+ * block of the dictionary. */
+void mu_addrs()        { TOP <<= ADDR_SHIFT; }
+void mu_addr_slash()   { TOP >>= ADDR_SHIFT; }  /* signed & flooring! */
 
 /* fetch and store character (really _byte_) values */
 void mu_cfetch()  { TOP = *(uint8_t *)TOP; }
@@ -77,6 +87,10 @@ void mu_cstore()  { *(uint8_t *)TOP = ST1; DROP(2); }
 void mu_fetch()       { TOP =  *(cell *)TOP; }
 void mu_store()       { *(cell *)TOP  = ST1; DROP(2); }
 void mu_plus_store()  { *(cell *)TOP += ST1; DROP(2); }
+
+/* fetch and store addr values (32 or 64 bit) */
+void mu_addr_fetch()  { TOP =  *(addr *)TOP; }
+void mu_addr_store()  { *(addr *)TOP  = ST1; DROP(2); }
 
 /* copy nth value (counting from 0) to top - ANS calls this "pick" */
 void mu_nth()    { TOP = SP[TOP+1]; }
@@ -117,11 +131,8 @@ void mu_star()    { ST1 *= TOP; DROP(1); }
 
 void mu_uslash_mod()  /* u1 u2 -- um uq */
 {
-    ucell umod;
-    ucell uquot;
-
-    uquot = (ucell)ST1 / TOP;
-    umod  = (ucell)ST1 % TOP;
+    ucell uquot = (ucell)ST1 / TOP;
+    ucell umod  = (ucell)ST1 % TOP;
     ST1 = umod;
     TOP = uquot;
 }
@@ -152,11 +163,8 @@ void mu_uslash_mod()  /* u1 u2 -- um uq */
  */
 void mu_slash_mod()  /* n1 n2 -- m q */
 {
-    cell mod;
-    cell quot;
-
-    quot = ST1 / TOP;
-    mod  = ST1 % TOP;
+    cell quot = ST1 / TOP;
+    cell mod  = ST1 % TOP;
 
 #ifdef MU_DIVISION_IS_SYMMETRIC
     /*
@@ -174,7 +182,6 @@ void mu_slash_mod()  /* n1 n2 -- m q */
     ST1 = mod;
     TOP = quot;
 }
-
 
 void mu_string_equal()   /* a1 len1 a2 len2 -- flag */
 {

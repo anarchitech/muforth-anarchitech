@@ -20,78 +20,62 @@
 /* C version of state variable */
 static code state = &muboot_interpret_token;
 
-/* cell versions of char * pointers */
-typedef CELL_T(char *) charptr_cell;
+/*
+ * These three variables are read and written from Forth; each C type needs
+ * to fit exactly into an addr, and we read, write, and preserve using
+ * addr@ addr! and addr-preserve.
+ */
+static char *start;     /* input source text */
+static char *end;
+static char *first;     /* goes from start to end */
 
-static charptr_cell start;      /* input source text */
-static charptr_cell end;
-static charptr_cell first;      /* goes from start to end */
-
-/* line number - incremented for each newline */
-static cell lineno = 1;
+/* We read and write this from Forth using @ and !; it has to be a cell. */
+static cell lineno;     /* line number - incremented for each newline */
 
 int parsed_lineno;              /* captured with first character of token */
 struct string parsed;           /* for errors */
 static struct string skipped;   /* whitespace skipped before token */
 static struct string trailing;  /* whitespace skipped after token */
 
-/* Push lineno variable */
-void mu_push_line()
-{
-    PUSH_ADDR(&lineno);
-}
+/* Push addresses of the four crucial interpreter source variables. */
+void mu_push_start()    { PUSH_ADDR(&start); }
+void mu_push_end()      { PUSH_ADDR(&end); }
+void mu_push_line()     { PUSH_ADDR(&lineno); }  /* we call it "line" in muforth */
+void mu_push_first()    { PUSH_ADDR(&first); }
 
 /* Push captured line number */
-void mu_at_line()
-{
-    PUSH(parsed_lineno);
-}
-
-void mu_push_first()
-{
-    PUSH_ADDR(&first);
-}
-
-void mu_push_start()
-{
-    PUSH_ADDR(&start);
-}
-
-void mu_push_end()
-{
-    PUSH_ADDR(&end);
-}
+void mu_at_line()   { PUSH(parsed_lineno); }
 
 void mu_push_parsed()
 {
-    PUSH((addr) parsed.data);
+    PUSH_ADDR(parsed.data);
     PUSH(parsed.length);
 }
 
 void mu_push_skipped()
 {
-    PUSH((addr) skipped.data);
+    PUSH_ADDR(skipped.data);
     PUSH(skipped.length);
 }
 
 void mu_push_trailing()
 {
-    PUSH((addr) trailing.data);
+    PUSH_ADDR(trailing.data);
     PUSH(trailing.length);
 }
 
 static void capture_token(char *last, int ate_trailing)
 {
     /* Get address and length of the token */
-    parsed.data = _(first);
-    parsed.length = last - _(first);
+    parsed.data = first;
+    parsed.length = last - first;
 
     /* Save trailing delimiter as a token: address and length */
     trailing.data = last;
     trailing.length = ate_trailing;
 
     /* Account for characters processed */
-    _(first) = last + ate_trailing;
+    first = last + ate_trailing;
 
 #ifdef DEBUG_TOKEN
     /* Without these casts, this doesn't work! */
@@ -103,15 +87,15 @@ static void capture_token(char *last, int ate_trailing)
 static void skip()
 {
     /* Record skipped whitespace as if it's a token */
-    skipped.data = _(first);
+    skipped.data = first;
 
-    while (_(first) < _(end) && isspace(*_(first)))
+    while (first < end && isspace(*first))
     {
-        if (*_(first) == '\n') lineno++;
-        _(first)++;
+        if (*first == '\n') lineno++;
+        first++;
     }
 
-    skipped.length = _(first) - skipped.data;
+    skipped.length = first - skipped.data;
 }
 
 /*
@@ -126,7 +110,7 @@ static void scan(int delim)
     /* capture lineno that token begins on */
     parsed_lineno = lineno;
 
-    for (last = _(first); last < _(end); last++)
+    for (last = first; last < end; last++)
     {
         c = *last;
         if (c == '\n') lineno++;
@@ -145,15 +129,15 @@ static void scan(int delim)
 
 void mu_token()  /* -- start len */
 {
-    skip();         /* skip leading whitespace */
-    scan(' ');   /* scan for trailing whitespace and capture token */
+    skip();             /* skip leading whitespace */
+    scan(' ');          /* scan for trailing whitespace and capture token */
     mu_push_parsed();   /* push parsed token */
 }
 
 void mu_parse()  /* delim -- start len */
 {
     /* The first character of unseen input is the first character of token. */
-    scan(POP);   /* scan for trailing delimiter and capture token */
+    scan(POP);          /* scan for trailing delimiter and capture token */
     mu_push_parsed();   /* push parsed token */
 }
 
@@ -206,7 +190,7 @@ static void muboot_compile_token()
     mu_find();
     if (POP)
     {
-        mu_comma();
+        mu_addr_comma();
         return;
     }
     mu_complain();
@@ -229,7 +213,7 @@ static void muboot_show_stack()
     int i;
     fprintf(stderr, "  --");
     for (i = 0; i < 4; i++)
-        fprintf(stderr, "  %16llx", (uval)SP[3-i]);
+        fprintf(stderr, "  %16llx", (ucell)SP[3-i]);
     fprintf(stderr, "\n");
     fflush(stderr);
 }
@@ -270,13 +254,13 @@ void muboot_load_file()    /* c-string-name */
     fd = TOP;
     mu_read_file();
 
-    _(start) = (char *)ST1;
-    _(end)   = (char *)ST1 + TOP;
+    start = (char *)ST1;
+    end   = (char *)ST1 + TOP;
     DROP(2);
 
     /* wait to reset these until just before we evaluate the new file */
     lineno = 1;
-    _(first) = _(start);
+    first = start;
 
     muboot_interpret();
 
