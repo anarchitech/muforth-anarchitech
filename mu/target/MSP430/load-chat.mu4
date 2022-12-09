@@ -6,11 +6,14 @@
   will load the chat code into RAM instead. This is very useful for
   re-flashing the byteloader code!)
 
+-d clobbering-vectors-ok
+
 ld! target/MSP430/build.mu4  ( sets radix to hex!)
 
 .ifdef in-ram
    ram  @ram "20 +  region!  ( skip the BSL stack)
 .else .ifdef bsl-ram-chat
+   -d in-ram
    ram  @ram #ram 3 4 */ +  region!
 .else
    flash  @boot region!
