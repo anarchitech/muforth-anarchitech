@@ -188,6 +188,10 @@ aka UCB0SA  equ UCB0I2CSA     ( I2C slave address)
 01b4 equ ADC10MEM   ( ADC memory)
 01bc equ ADC10SA    ( ADC data transfer start address)
 
+( Table 10, msp430g2553.pdf, Tags Used by ADC Calibration Tags )
+10f6 equ TAG_DCO_30
+10da equ TAG_ADC10_1
+
 ( Information memory, segment A - ADC calibration constants)
 : adc  ( offset)  10da +  equ ;
 
