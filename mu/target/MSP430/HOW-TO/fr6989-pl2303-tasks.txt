@@ -1,0 +1,79 @@
+#################################################
+Sun Dec 18 09:06:06 PST 2022
+dgs@deckard.localhost
+#################################################
+
+1) flash or reflash the load-chat code:
+
+   ./muforth -d fr6989 -d microscope (optional) -d in-ram \
+    -f target/MSP430/load-chat.mu4
+   
+   chat
+   ^C (reset, leave plugged in)
+
+   ./muforth -d fr6989 -d microscope -f target/MSP430/load-chat.mu4
+   chat
+   flash-image
+   verify
+   bye (if joy)
+
+2) Connect PL2303 to the FR6989 Launchpad as follows:
+
+   PL2303            FR6989
+   GND     -------->  GND
+   RX      -------->  P2.0 (outer row header, inline w/ micro usb)
+   TX      -------->  P2.1 (opposite header)
+
+3) Plug the FR6989 into one USB port, the PL2303 into another.
+   dmesg and note device enumeration of PL2303.  NB: Vast difference
+   between OpenBSD & Linux!
+
+   Linux
+   
+   stty -a < /dev/<pl2303>
+   stty raw pass8 115200 < /dev/<pl2303>
+
+   In separate terminal (or terminal window if you're using X)
+ 
+   cat < /dev/<pl2303>
+
+   OpenBSD
+
+   cp mu/target/common/scripts/sermon $HOME/bin
+   sermon   ... and follow the directions.  RTFM the code comments in
+                sermon first. ;)
+
+4) In your muforth terminal ($HOME/muforth-repo-name/mu)
+
+   ./muforth -d fr6989 -d microscope -f target/MSP430/load-task.mu4
+   chat
+   flash-image
+   verify
+   xx (yes, that's a forth word)
+
+5) Tasks are now set up and the timer is (should be) running. Execute
+   
+   now
+
+   several times in succession and you should see incrementing values on
+   the stack.  That's the timer count.  It rolls over after ffff, and it
+   increments *quickly*.
+
+   Run the task loop several times and watch your monitoring terminal
+   (wherever you're running cat or sermon):
+
+   4000 tt
+
+NB: There is a timeout in ther serial read code of something like 2 to 4
+seconds.  It's annoying as fuck in cases like this, because if you try
+to pass a value of e000ish or greater to tt, you'll be treated to the
+infamous message:
+
+   <key timed out
+
+The solution is 
+
+   rechat
+
+... but it's frequent and annoying enough that I've petitioned daf to
+make it a variable that the user can set. We'll see if he bites.

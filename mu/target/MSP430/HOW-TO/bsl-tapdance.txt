@@ -1,0 +1,180 @@
+Sun Dec 18 09:04:00 PST 2022
+
+NB: This was originally written ca. 2014(!) ... and it should be noted
+that we have been using our supply of initialized chips and haven't had
+to do this in awhile.  I need to chat with daf and determine whether
+this is still applicable.  AFAIK, this is *specific to the g2xxx* ONLY!
+
+You have been warned. ;-)
+
+==== TAP DANCE ====
+
+BSL -- muforth style
+
+First things first!  Get your MSP430G2553IN breadboarded up. Put the
+chip in the center of the board and a 20 pin header on either side.
+We'll use those to initially get voltage to the chip and for our BSL
+TX/RX lines.
+
+Bird's eye view:
+
+PL2303HX            Breadboard                   Chip 3.3v
+-------------> Vcc bus --------> Vcc, Terminal 1 TXD
+-------------------------------> BSL receive, P1.5, Terminal 7 RXD
+-------------------------------> BSL transmit, P1.1, Terminal 3 GND
+-------------> Vss bus --------> Vss, Terminal 20 5.0v n/a
+
+Now we need two other jumpers to facilitate initiating the correct BSL
+wakeup procedure.  Stick 1 jumper into an empty hole in the breadboard
+that lines up with terminal 17 (TEST) and another jumper in a hole that
+lines up with terminal 16 (RST in this case). Plug the other end of
+both leads into the GND bus of the breadboard, we want to make sure
+they both start out driven low.  
+
+Plug the PL2303HX into an open USB port.  lsusb and make sure it's
+enumerating correctly; it should show up in  /dev as ttyUSB0.  
+
+Carefully unplug the TEST jumper from GND, plug it into Vcc, unplug
+from Vcc, plug back into GND, unplug from GND and plug into Vcc.  Got
+that? Good, leave it there.
+
+Now unplug RST from GND and plug it into Vcc.  
+
+Now unplug TEST from Vcc and plug it into GND.
+
+Fun, eh? Congratulations, that tap dance has woken up the BSL and it's
+now ready for you to send the correct initiation sequence and password.
+Sending 80h and getting 90h back is easy, but if you send it the wrong
+password (and it is NOT a blank chip -- ie you have code on it) it WILL
+WIPE THE CHIP.  Yup, it's a safety feature to protect your proprietary
+code and _theoretically_ keep people from stealing it.  More on this
+later.
+
+
+==== WAY OF THE KERNEL ====
+
+After executing TAP DANCE:
+
+./muforth -d in-ram -f target/MSP430/load-chat.mu4 bsl 200 du, then i,
+should see bsl code start up at 220 drop or 2drop to get rid of any
+stack tidbits go
+
+Now switch the wires out of bsl mode.  TX -> terminal 3, RX -> terminal
+4
+
+Now ^C
+
+./muforth -f target/MSP430/load-chat.mu4 chat flash-image verify
+
+Touch RST (terminal 16) to GND to reset, then back to power
+
+chat
+
+PC should = fefe
+
+^C
+
+./muforth -f target/MSP43O/load-kernel.mu4 chat flash-image verify
+
+And you now have both the chat code and the muforth kernel on the chip.
+
+You should see something like this if you follow the above instructions
+carefully:
+
+[dgs@Ubik:~/muforth/mu]$ ./muforth -d in-ram -f
+target/MSP430/load-chat.mu4 muFORTH/64 (8a1f8491) 2014-may-01 04:52
+(http://muforth.nimblemachines.com/) Copyright (c) 2002-2014 David
+Frech (see the COPYRIGHT file for details)
+
+Type 'settings' to see a few of muFORTH's tweakable behaviours.
+
+(( Target endianness )) (( MSP430 meta-compiler (chains and token
+consumers) )) (( MSP430 memory image )) (( MSP430 assembler reg again.
+)) (( MSP430 disassembler .byte again.  )) (( MSP430 meta-compiler
+(main) )) (( MSP430 interaction reg again.  .r again.  )) (( MSP430
+flash programming )) (( Serial expect/send )) (( MSP430 bootstrap
+loader (BSL) support )) (( MSP430 serial chat protocol (host) checksum
+again.  sum! again.  sum again.  >w again.  w> again.  )) (( MSP430
+serial chat protocol (core) )) bsl V----INZC    IP     W    RP   Cnt
+Top     X     Y    SP    PC 010101101  dead  dead  dead  dead  dead
+dead  dead  dead  0220   Ok (chatting) (hex) --                 0
+0                 0          decafbad 200 du 0200   ffff  ffff   ffff
+ffff   ffff  ffff   ffff  ffff 1400  00a7   0035  1004   13d1  0080
+1010  0200 0200  1400  *unimplemented* 0202  00a7  *unimplemented* 0204
+0035  *unimplemented* 0206  1004  ror ip 0208  13d1  *unimplemented*
+020a  0080  *unimplemented* 020c  1010  ror 040e 0210  0010
+*unimplemented* 0212  1080  swpb pc 0214  1080  swpb pc 0216  0100
+*unimplemented* 0218  02c0  *unimplemented* 021a  0e60  *unimplemented*
+021c  0e60  *unimplemented* 021e  0e36  *unimplemented* 0220  b3d2
+bitb #1 &0003 0224  27fd  jz 0220 0226  4258  movb &0066 top 022a  4130
+pop pc 022c  b3e2  bitb #2 &0003 0230  27fd  jz 022c 0232  48c2  movb
+top &0067 0236  4130  pop pc 0238  12b0  call #220 023c  4809  mov top
+x 023e  12b0  call #220 0242  1088  swpb top 0244  d908  bis x top 0246
+e80a  xor top y 0248  4130  pop pc 024a  e80a  xor top y Ok (chatting)
+(hex) --                 0          decafbad               230
+24a 2drop  Ok (chatting) (hex) --                 0                 0
+0          decafbad go  Ok (chatting) (hex) --                 0
+0                 0          decafbad
+
+[dgs@Ubik:~/muforth/mu]$ ./muforth -f target/MSP430/load-chat.mu4
+muFORTH/64 (8a1f8491) 2014-may-01 04:52
+(http://muforth.nimblemachines.com/) Copyright (c) 2002-2014 David
+Frech (see the COPYRIGHT file for details)
+
+Type 'settings' to see a few of muFORTH's tweakable behaviours.
+
+(( Target endianness )) (( MSP430 meta-compiler (chains and token
+consumers) )) (( MSP430 memory image )) (( MSP430 assembler reg again.
+)) (( MSP430 disassembler .byte again.  )) (( MSP430 meta-compiler
+(main) )) (( MSP430 interaction reg again.  .r again.  )) (( MSP430
+flash programming )) (( Serial expect/send )) (( MSP430 bootstrap
+loader (BSL) support )) (( MSP430 serial chat protocol (host) checksum
+again.  sum! again.  sum again.  >w again.  w> again.  )) (( MSP430
+serial chat protocol (core) )) chat Chat firmware version 8a1f8491
+V----INZC    IP     W    RP   Cnt   Top     X     Y    SP    PC
+000000011  eb6b  0034  0212  0000  e25d  0001  3ffd  03ea  0324   Ok
+(chatting) (hex) --                 0                 0
+0          decafbad flash-image erase-page fe00 FCTL3=9618 flashing
+vectors program-row ffc0 40 FCTL3=9618 program-row fe00 40 FCTL3=9618
+program-row fe40 40 FCTL3=9618 program-row fe80 40 FCTL3=9618
+program-row fec0 40 FCTL3=9618 program-row ff00 40 FCTL3=9618
+program-row ff40 e FCTL3=9618  Ok (chatting) (hex) --                 0
+0                 0          decafbad verify  Ok (chatting) (hex) --
+0                 0                 0          decafbad .regs V----INZC
+IP     W    RP   Cnt   Top     X     Y    SP    PC 000000011  eb6b
+0034  0212  0000  e25d  0001  3ffd  03ea  0324   Ok (chatting) (hex) --
+0                 0                 0          decafbad chat Chat
+firmware version 8a1f8491 V----INZC    IP     W    RP   Cnt   Top     X
+Y    SP    PC 000000000  0000  0034  0212  0000  00ff  00c0  f935  03ea
+fefe   Ok (chatting) (hex) --                 0                 0
+0          decafbad
+
+
+[dgs@Ubik:~/muforth/mu]$ ./muforth -f target/MSP430/load-kernel.mu4
+muFORTH/64 (8a1f8491) 2014-may-01 04:52
+(http://muforth.nimblemachines.com/) Copyright (c) 2002-2014 David
+Frech (see the COPYRIGHT file for details)
+
+Type 'settings' to see a few of muFORTH's tweakable behaviours.
+
+(( Target endianness )) (( MSP430 meta-compiler (chains and token
+consumers) )) (( MSP430 memory image )) (( MSP430 assembler reg again.
+)) (( MSP430 disassembler .byte again.  )) (( MSP430 meta-compiler
+(main) )) (( MSP430 interaction reg again.  .r again.  )) (( MSP430
+flash programming )) (( Serial expect/send )) (( MSP430 bootstrap
+loader (BSL) support )) (( MSP430 serial chat protocol (host) checksum
+again.  sum! again.  sum again.  >w again.  w> again.  )) (( MSP430
+Forth kernel )) chat Chat firmware version 8a1f8491 V----INZC    IP
+W    RP   Cnt   Top     X     Y    SP    PC 000000000  0210  64ff  edbc
+227d  77b7  e6bf  c3fc  03ea  fefe   Ok (chatting) (hex) --
+0                 0                 0          decafbad flash-image
+erase-page c000 FCTL3=9658 program-row c000 40 FCTL3=9658 program-row
+c040 40 FCTL3=9658 program-row c080 40 FCTL3=9658 program-row c0c0 40
+FCTL3=9658 program-row c100 40 FCTL3=9658 program-row c140 40
+FCTL3=9658 program-row c180 40 FCTL3=9658 program-row c1c0 40
+FCTL3=9658 erase-page c200 FCTL3=9658 program-row c200 18 FCTL3=9658
+Ok (chatting) (hex) --                 0                 0
+0          decafbad verify  Ok (chatting) (hex) --                 0
+0                 0          decafbad
+
+TA-DA! Now go do something useful.....

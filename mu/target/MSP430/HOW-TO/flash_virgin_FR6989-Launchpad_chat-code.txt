@@ -1,0 +1,56 @@
+git log scrape:
+
+commit 1dd55c32e9bd8663bc317387483a82c8f8ca2166 (origin/master, origin/acercromie/mast
+er, origin/HEAD)
+Author: David Frech <david@nimblemachines.com>
+Date:   Thu Nov 16 18:12:37 2017 -0800
+
+    msp430: Working chat code for MSP430FR6989!!
+    
+    I needed to make two changes:
+    
+    * clear the PM5CTRL bit that holds all i/o pins in high-impedance state
+    after reset or upon waking from certain low power modes;
+    
+    * Fix the "password" written to CSCTL0 to unlock the clock system
+    registers. I was using 5a00 and it's supposed to a500. Everything is
+    a500 except for the watchdog, which uses 5a00.
+    
+    To use this code on your FR6989 Launchpad, do the following:
+    
+      ./muforth -d fr6989 -f target/MSP430/load-chat.mu4 gen-ihex bye > \
+              chat-fr6989.hex
+    
+    (That's all one command line; the \ is just there to demonstrate that
+    fact.)
+    
+    Now you should have a chat-fr6989.hex file in muforth/mu/.
+    
+    Install MSPFlasher from ti.com if you haven't already. I had to set
+    LD_LIBRARY_PATH to the install directory of MSPFlasher because otherwise
+    it couldn't find libmsp430.so. Do what you need to do.
+    
+    Plug in your Launchpad and run
+    
+      MSPFlasher -n NO_TARGET
+    
+    This will update the firmware (if necessary) on the debug bridge on the
+    board (ez-FET).
+    
+    Now flash the chat code into the target:
+    
+      MSP430Flasher -w chat-fr6989.hex -v -z [VCC]
+    
+    This will write (-w), verify (-v), and then set the target running.
+    
+    Now connect using muforth. Make sure that your serial-target symlink in
+    muforth/mu/ points to /dev/ttyACM1.
+    
+      ./muforth -d fr6989 -f target/MSP430/load-chat.mu4
+      chat
+    
+    You should see a banner and some registers!
+    
+    There are a lot of quirks at this point. I will be working to make the
+    experience more seamless and sensible in the near future.
+
