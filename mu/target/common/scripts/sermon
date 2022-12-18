@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# sermon : serial monitor.  Used primarily for monitoring muforth
+# tasks code from a PL2303 hooked to tx/rx/gnd of the MSP430fr6989
+# launchpad board. stty on OpenBSD does not work the same as on 
+# Linux, and in order to successfully monitor a serial connection
+# that enumerates to /dev/cuaUx, you must use either cu or serial
+# monitor such as minicom.  cu is cleaner with less setup.
+#
+# Note that on OpenBSD serial devices such as the PL2303 will, in
+# dmesg output (or xconsole), when they enumerate, list first their
+# driver (uplcom0 in the case of the PL2303 if it's the first such
+# device attached) and then the USB tty driver, ucomX, which will
+# either point at a ttyUx device or a cuaUx device.
+#
+# For example, with the fr6989 plugged into one USB port and the
+# PL2303 plugged into another, it enumerates as follows:
+#
+# uplcom0 at uhub1 port 1 configuration 1 interface 0 "Prolific
+# Technology Inc. USB-Serial Controller" rev 1.10/3.00 addr 2
+# ucom2 at uplcom0
+#
+# Hence, we would pass /dev/cuaU2 to cu.
+#
+# The options used are as follows:
+#
+#  -d    Specify that the line is directly connected and cu
+#        should not allow the driver to block waiting for a 
+#        carrier to be detected.
+#
+# -r     Start cu in restricted mode.  This prevents all local
+#        filesystem operations (~R, ~X and ~>) and command
+#        executions (~C and ~$).
+#
+# -l     Specify the line to use.  Either of the forms like
+#        cua00 or /dev/cua00 are permitted.  The default is
+#        /dev/cua00.  See cua(4) for information on terminal
+#        devices. Users in group "dialer" are permitted to use
+#        cua(4) devices by default.
+#
+# -s     speed | -speed
+#        Set the speed of the conneciton. The default is 9600.
+set -euf
+dmesg
+echo
+echo "Enter ucomX number from output above. ~. ends session: "
+echo
+read -r X
+echo
+cu -d -r -l /dev/cuaU"$X" -s 115200
