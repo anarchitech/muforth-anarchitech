@@ -232,7 +232,7 @@ code i   [r]  ( - index)
   flash!)
 
 meta: buffer   ( #bytes)
-   h preserve  ram  align here  swap aligned allot  constant ;
+   h @ push  ram  align here  swap aligned allot  pop h !  constant ;
 
 meta: variable     cell    buffer ;  ( A variable is a cell-sized buffer!)
 meta: 2variable    cell 2* buffer ;
@@ -354,8 +354,13 @@ meta: incr   constant  ;code   0 w +) w ldr   w top top adds   next  ;c
   -1 incr 1-   [r]
   -2 incr 2-   [r]
 
+cell    constant cell    [r]
 cell        incr cell+   [r]
 cell negate incr cell-   [r]
+
+code cells   [r]  cellshift # top top lsls   next  ;c
+code cell/   [r]  cellshift # top top asrs   next  ;c
+
 
 .ifdef notyet  ( unconverted RISC-V code)
 
