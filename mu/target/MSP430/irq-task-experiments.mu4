@@ -214,7 +214,7 @@ code -irq   dint  next  ;c
    [ sp0 #] task.sp0 !
    task.status wake
    0 0 ticks 2!  init-irqs  init-uart0  start-timer  +irq
-   #1 61 taska sending  #5 62 taskb sending  #25 63 taskc sending
+   #1 2f taska sending  #1 5c taskb sending  #1 7c taskc sending
    ;
 
 : tt  ( n)  for pause next ;  ( run the task loop n times)
