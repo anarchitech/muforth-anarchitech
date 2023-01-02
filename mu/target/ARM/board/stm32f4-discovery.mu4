@@ -17,7 +17,7 @@ ld target/ARM/stm32/f407_g-example.mu4
 =======
 ( This file is part of muforth: https://muforth.nimblemachines.com/
 
-  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
 loading STM32F4 Discovery board
 

@@ -1,6 +1,6 @@
 ( This file is part of muforth: https://muforth.nimblemachines.com/
 
-  Copyright 2002-2022 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
 loading STM32F072B Discovery board
 
@@ -13,6 +13,9 @@ flash
 
 -- No, this is more fun: USB firmware!
 ld target/ARM/stm32/usb-experiments.mu4
+
+-- Or maybe the tasking demo?
+-- ld target/ARM/v6-m/irq-task-experiments.mu4
 
 __meta
 hex
