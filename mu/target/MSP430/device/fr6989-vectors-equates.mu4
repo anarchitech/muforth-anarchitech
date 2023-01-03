@@ -560,8 +560,8 @@ drop
 06 preg UCB0BR0         | high byte of UCB0BRW in case you need it
 07 preg UCB0BR1         | low byte of UCB0BRW in case you need it
 08 preg UCB0STATW       | eUSCI_B status word
-08 preg UCB0STAT        | high byte = status
-09 preg UCB0BCNT        | low byte = byte count register
+08 preg UCB0STAT        | low  byte = status
+09 preg UCB0BCNT        | high byte = byte count register
 0a preg UCB0TBCNT       | eUSCI_B byte counter threshold
 0c preg UCB0RXBUF       | eUSCI_B receive buffer
 0e preg UCB0TXBUF       | eUSCI_B transmit buffer
