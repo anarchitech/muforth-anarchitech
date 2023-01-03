@@ -556,12 +556,12 @@ drop
 0640
 00 preg UCB0CTLW0       | eUSCI_B control word 0
 02 preg UCB0CTLW1       | eUSCI_B control word 1
--- This was an inconsistency and arguably wrong. It wasn't done for
--- UCB0CTLW0 or UCB0STATW ... and there's no need to do this here.
--- 06 preg UCB0BR0         | eUSCI_B bit rate 0
--- 07 preg UCB0BR1         | eUSCI_B bit rate 1
 06 preg UCB0BRW         | eUSCI_B Bit Rate Control Word
+06 preg UCB0BR0         | high byte of UCB0BRW in case you need it
+07 preg UCB0BR1         | low byte of UCB0BRW in case you need it
 08 preg UCB0STATW       | eUSCI_B status word
+08 preg UCB0STAT        | high byte = status
+09 preg UCB0BCNT        | low byte = byte count register
 0a preg UCB0TBCNT       | eUSCI_B byte counter threshold
 0c preg UCB0RXBUF       | eUSCI_B receive buffer
 0e preg UCB0TXBUF       | eUSCI_B transmit buffer
