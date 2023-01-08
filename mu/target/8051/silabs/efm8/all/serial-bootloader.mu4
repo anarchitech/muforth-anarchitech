@@ -73,5 +73,5 @@ hex
 ( This is really just for testing - initially with an EFM8BB1LCK board.)
 : hi
    #115200 bps  drain  flush
-   ff >b  ( send autobaud training byte)
+   ff >b ff >b  ( send autobaud training byte)
    3001 ( device and derivative id for EFM8BB10F8G_QSOP) b.identify ;
