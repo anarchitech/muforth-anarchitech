@@ -98,3 +98,14 @@ and
    >24 >03 >30 >30 >01 <40  Ok (hex)
 
 Congrats, you're there.
+
+== UPDATE ==
+
+Two new words have been added, erase-reset-vector and test-crc.
+
+Both "work" ... although test-crc throws a 43h back indicating that
+there's something up with the either the CRC algorithm used (scraped
+from the MSP430) or something ...
+
+The upshot after running both of these is that you will no longer need 
+to drive P2.0 low by jumpering between it and GND, so there's that.
