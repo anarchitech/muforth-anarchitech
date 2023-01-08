@@ -59,7 +59,7 @@ wrangling their chip.  Do it.
 After that's finished, click on the device in the Debug Adapters tile,
 click on Tools in the Toolbar menu, select the Flash utility, and then
 select Browse and browse to the location of the hex file included in
-this repo. Click erase in the Flash utility and the Program ... and it
+this repo. Click erase in the Flash utility and then Program ... and it
 should "just work."
 
 Disconnect and close Simplicity Studio.  Don't uninstall it, we might
