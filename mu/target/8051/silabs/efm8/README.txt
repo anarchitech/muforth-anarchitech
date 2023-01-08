@@ -94,7 +94,7 @@ and
    (( CRC-16-CCITT ))
    (( Serial expect/send ))))
    spy on  Ok (hex)
-   hi >ff >ff 
+   hi >ff 
    >24 >03 >30 >30 >01 <40  Ok (hex)
 
 Congrats, you're there.
