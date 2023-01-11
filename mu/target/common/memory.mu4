@@ -2,116 +2,144 @@
 
   Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
-( memory.mu4 -- basic memory management for target compilers)
+-- loading Memory image (generic)
 
-loading Common memory management
+( NOTE: Before loading this code, define the following values that
+  describe the target:
 
-decimal
-( 2002-nov-20. Randy and David started the job of splitting out code
-  common to multiple architectures.)
+    cell-bytes  -- number of bytes in a cell
+    addr-bits   -- number of bits in an address
+    big-endian or little-endian  -- target's endianness
 
-( 2002-mar-27. Converted to work with muforth.)
+  Additionally, if the target is a Harvard architecture machine, the symbol
+  "harvard" should be defined.
 
-( 13-sep-1998.  When the target and host have different word sizes, and
-  possibly different endianesses, we really need special words for target
-  dictionary work.  Chuck Moore's `space switching' will not work for us.)
+  *After* loading this code, the deferred word "choose-image" [see below]
+  must be set to code specific to the target machine and its architecture.)
 
-( 14-sep-1998.  More changes!  We have separate spaces -- in the 80x86 world
-  -- for code and `words'.  We need separate [but equal] dictionary words for
-  the two spaces.)
+ld target/common/endian.mu4   ( why not just do this in one place, ie, here?)
 
-( 24-sep-1998.  Changed to be hopefully simpler.  Instead of having the
-  clients of this module worry about relative and absolute we're going to
-  change things around a little.  Now `>here' and `|here' return relative
-  rather than absolute values.  The `comma' words will work as advertised.
-  The only thing that this changes, other than making for fewer `|#' and
-  `>+' and other un-readables, is that >c! and >! must have their address
-  converted to absolute, in code or word space.)
+: power-of-two?  ( n)
+   begin  dup 1 and 0=  while  u2/  repeat  1 = ;
 
-( 6-apr-1999. Modified for ARM. No segments! I like the `|' prefix, so I'll
-  use that for target words. We only need one space for the ARM, so I got
-  rid of `>' words. See the file target/ARM/NOTES for comments about
-  endianness and other issues.)
+( Memory images are prefixed by their current pointer, origin, and size in
+  bytes.)
 
-( 26-apr-1999. Using the new dump in startup.d4. So we need to define arm|@
-  and arm|c@ and init the deferred words.)
+variable h    ( dictionary pointer pointer; points to current image)
+: dp   h @ ;  ( dictionary pointer)
 
-( 2004.jun.28 Here is our memory model. There are four separate spaces -
-  code, data, name and ram - and each one has a size, and a target origin
-  address; also, all but ram has a host-resident buffer containing a memory
-  image of the space, and therefore also has a host address - the address
-  of the first byte of this buffer. The naming convention is as follows,
-  using code as an example:
+: make-image  ( origin #bytes)
+   dup power-of-two?  0= if  error" image size not a power of 2"  then
+   create  swap  dup , , ( ptr origin)  dup , ( size)   allot
+   does>  h ! ;
 
-  #code  is the size of the code space;
-  @code  is the target origin address;
-  'code  is the address of the buffer on the host.
+-: ( tell us which image is current)
+   ."  ("  dp  body> >name type  ." )" ;  is .extra-prompt
 
-  Of course, a given meta compiler doesn't have to use all 4 spaces, or use
-  them in any particular way. It's just that we expect there to be several
-  common cases, and we're defining them here for convenience.
+( Simple but inefficient!)
+: @image  dp  cell+ @         ( origin) ;
+: #image  dp  cell+ cell+ @   ( image size) ;
+: 'image  dp  [ 3 cells #] +  ( image address) ;
 
-  The ram space is for _initialized_ data. For targets that will refer to
-  an uninitialized data space, and want tools for that, we define them
-  here. Note that thes usages in a meta context seem different from that of
-  a host muforth context, but really aren't. For the host muforth, C's text
-  and data sections play the roles of code and data, and ram and name are
-  both, at initial run time, uninitialized spaces.
+( Target can be a von Neumann or Harvard architecture machine, so we let
+  the user decide how to handle choosing an image based on a target
+  address.
 
-  Before loading this code, the "client" meta compiler needs to define the
-  following:
+  On a von Neumann machine we have multiple images, but we assume that they
+  exist in a single address space. Given a target address, choose-image will
+  figure out which image it resides in and set that as the current image.
 
-  #code #data #name #ram    [sizes]
-  @code @data @name @ram    [target origin addresses])
+  On a Harvard machine we can have multiple addresss spaces that contain
+  the same addresses, so there is no way to choose an image based on the
+  target address. In this case, choose-image will probably do nothing, and
+  the user has to choose the image that they are interested in.)
 
-( First define the image spaces. )
-#code buffer 'code  ( is the address of buffer on host)
-#data buffer 'data  ( ditto)
-#name buffer 'name  ( ditto)
+defer choose-image
+: image+  ( target - host)  choose-image  #image 1- and  'image + ;
 
-( Since we can't assume we're in a segmented mode, we need to define
-  non-zero origins, esp. for ROMed code.)
+: image-c@   image+ c@ ;
+: image-c!   image+ c! ;
 
-: >code  [ 'code @code - #] + ;  ( convert target address to host image address)
-: >data  [ 'data @data - #] + ;  ( ditto, for data space)
-: >name  [ 'name @name - #] + ;  ( ditto, for name space)
-( Since there is no host-side image of ram space, we don't have a conversion.)
+( After each definition of image-@ we use ' to leave on the stack the
+  address of the correct word for du to use for that target.)
 
-( Dictionary operators.)
-outside
+.ifdef little-endian
+   cell-bytes 4 = .if  ( 32-bit target)
+      : image-h@   image+ leh@ ;
+      : image-h!   image+ leh! ;
 
-variable h    @code \o h !  ( code pointer)
-variable d    @data \o d !  ( data pointer)
-variable n    @name \o n !  ( name pointer)
-variable r     @ram \o r !  ( ram pointer)
+      : image-@    image+ lew@ ;  ' lew@
+      : image-!    image+ lew! ;
+   .else cell-bytes 2 = .if  ( 8- or 16-bit target)
+      : image-@    image+ leh@ ;  ' leh@
+      : image-!    image+ leh! ;
+   .then .then
 
-: here      \o h @  ;  ( next available code space)
-: allot     \o r +! ;  ( advance ram allocation pointer)
-: ram       \o r @  ;  ( next available ram)
+.else .ifdef big-endian
+   cell-bytes 4 = .if  ( 32-bit target)
+      : image-h@   image+ beh@ ;
+      : image-h!   image+ beh! ;
 
-( Note: We don't define here how to allocate or use data or name space. We
-  don't know how the particular client meta-compiler will use these spaces.
-  We're just creating common infrastructure.
+      : image-@    image+ bew@ ;  ' bew@
+      : image-!    image+ bew! ;
+   .else cell-bytes 2 = .if  ( 8- or 16-bit target)
+      : image-@    image+ beh@ ;  ' beh@
+      : image-!    image+ beh! ;
+   .then .then
 
-  Also: we could/should put in bounds checks - like ram > #ram.)
+.else  error" You must define big-endian or little-endian."
 
+.then .then
 
-( Memory inspection operators. Eventually these will also be able to talk to
-  the target, rather than only reading from the image.)
-2variable limits  ( for checking mem accesses)
-\ ram constant bogus   "deadc0de dup , ,
-: inside  ( a - a)
-   dup  \o limits 2@  within  if  |+ ^  then   3 and  \o bogus  +  ;
+( The above mess left the address of a "cell@" word on the stack.)
+: du-target
+   [ #]    is |cell@
+   addr-bits  |addr !
+   cell-bytes |cell ! ;
 
-( Initialization.)
-: wipe  o= 'code o= #code erase  o= 'data o= #data erase
-        o= @code o= h !  o= @data o= d !  o= @ram o= r ! ;
+-: ( buf a u)  swap image+ -rot  cmove ;  ( read from image)
+: >image
+   [ #]    is |read
+   du-target ;
 
-: org   ( buffer len org)
-   tuck tuck + ( buf org org org+len)  \o limits 2!  dup \o h !  -  dA !  ;
+>image  ( default to image; this can change once we are chatting with target.)
 
-( `org' allows us to read or write an arbitrary buffer - a memory-mapped
-  file, 'image, whatever.)
+meta
+cell-bytes constant cell
+: cells  \m cell * ;
+: cell/  \m cell / ;
+: cell+  \m cell + ;
+: cell-  \m cell - ;
 
-( That's it for now!)
+: here   ( - a)  dp @ ;
+: goto   ( a)    dp ! ;   ( set region pointer to a)
+: allot  ( n)    dp +! ;
 
+: c,    ( ch)   \m here image-c!       1 \m allot ;
+: ,     ( w)    ( \m align)   \m here image-!  \m cell \m allot ;
+
+forth
+( Align an offset to an arbitrary power-of-2 alignment.)
+: aligned-by  ( offset alignment - offset')  push  r@ 1- +  pop negate and ;
+: mask-align,  ( b mask)  \m here  negate and  for  dup \m c,  next  drop ;
+
+meta
+: aligned         \m cell    aligned-by ;  ( cell aligned)
+: align,    ( b)  \m cell 1- mask-align, ;
+: align       0   \m align, ;
+
+cell-bytes 4 = .if  ( only define "halfword" words for 32-bit targets)
+
+: haligned                 2 aligned-by ;  ( halfword aligned)
+: halign,   ( b)           1 mask-align, ;
+: halign      0   \m halign, ;
+: h,    ( h)    ( \m halign)  \m here image-h!       2 \m allot ;
+
+.then
+
+forth
+( Return the start address and number of bytes in current region.)
+: region   ( - a u)       dp 2@  ( start end)  over - ;
+
+( Set both pointer [end] and origin [start] to the same value.)
+: region!  ( start)   dup dp 2! ;
