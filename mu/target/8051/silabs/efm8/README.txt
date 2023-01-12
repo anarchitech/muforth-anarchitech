@@ -145,4 +145,11 @@ So let me change that and see if we can get the crc to match."
 
 ----- snip -------
 
+##################################################
+Wed 11 Jan 2023 05:53:20 PM PST
+Queen@Carlotta
+##################################################
 
+daf has put in considerable effort and this is rapidly becoming a fully
+fledged viable tool for hacking on the 8051.  The git logs and the code
+are your best friends right now.
