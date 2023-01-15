@@ -6,7 +6,7 @@ Fork of https://github.com/nimblemachines/muforth
 
 ### UPDATE 15 Jan 2023
 
-muforth now includes [nascent support for the 8051.](https://github.com/anarchitech/muforth-anarchitech/mu/target/8051/README.md)
+muforth now includes [nascent support for the 8051.](https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/8051/README.md)
 
 ---
 
