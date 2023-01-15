@@ -4,6 +4,12 @@ Fork of https://github.com/nimblemachines/muforth
 
 ---
 
+### UPDATE 15 Jan 2023
+
+muforth now includes [nascent support for the 8051.](https://github.com/anarchitech/muforth-anarchitech/mu/target/8051/README.md)
+
+---
+
 ### UPDATE 15 October 2022
 
 muforth now includes [nascent support for generating uf2 files.](https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/ARM/beta-testing/README_UF2.md)
