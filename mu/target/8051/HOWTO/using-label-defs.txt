@@ -1,0 +1,55 @@
+#################################################
+Thu Jan 19 05:41:17 AM PST 2023
+Linux 6.1.6-arch1-3
+zhora6
+#################################################
+
+Reminder: The only currently tested/supported 8051 target
+is the SiLabs EFM8BB1LCK Dev Kit (US$6.25 from Mouser)
+
+-------------------
+Hexadecimal Values
+------------------
+
+Because on the 8051 we have mnemonics a/b/c/ab we have a bit of
+conundrum and need to contextually differentiate between those and
+their equivalent hexadecimal value.
+
+There are three ways of doing this, and this is now considered best
+practice for all targets:
+
+"a = 0xa double quote a
+$a = 0xa dollar sign a
+0a = 0xa preceding 0
+
+-----------------
+Basic exploration
+-----------------
+
+We need to use label definitions to get info out of the chip.
+
+The muforth word label allows us to write assembly code (interactively
+while chatting with the target!), flash that code to the chip, and
+execute using the word rx.  The label definitions need to store the
+results of their execution in r0-r7; a copy of the contents of those
+registers is stored in ram at addresses 0x00 - 0x07.  We read the
+results of execution by dumping ram from 0 and looking at the first 8
+bytes.  Example of this process below.
+
+
+flash
+
+label foo 3 # r3 mov ret ;c    ;; always need a ret, but you 
+                               ;; can be tail recursive (see chat code)
+flash-image
+
+verify                         ;; quiet verify. bytes 4-6ish match git
+                               ;; commit
+
+ram                            ;; execute code in flash, dump results in
+                               ;; r0-r7 which are copied to ram addr's
+                               ;; 0x00 - 0x07
+
+foo rx                         ;; rx == remote execution
+
+3 du                           ;; dump the contents of r3 from ram
