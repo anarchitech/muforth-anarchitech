@@ -4,9 +4,10 @@ Fork of https://github.com/nimblemachines/muforth
 
 ---
 
-### UPDATE 15 Jan 2023
+### UPDATE 23 Jan 2023
 
-muforth now includes [nascent support for the 8051.](https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/8051/README.md)
+muforth now includes [support for the 8051.](https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/8051/README.md)
+Work on this target is considered effectively complete at this point with only minor revisions/corrections expected.
 
 ---
 
