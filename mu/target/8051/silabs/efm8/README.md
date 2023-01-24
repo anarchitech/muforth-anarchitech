@@ -37,15 +37,20 @@ zero fiddling:
 
 On Archlinux:
 
+```
+
    $ git clone https://aur.archlinux.org/simplicitystudio5-bin.git
    $ cd simplicitystudio5-bin
    $ makepkg -si
 
+```
 After the install:
 
+```
    $ sudo cp /opt/simplicitystudio5/developer/adapter_packs/ \
              usb/udev/*.rules /etc/udev/rules.d/
    $ sudo chmod 644 /etc/udev/rules.d/*silabs*
+```
 
 Yes, for some reason (?!) the udev rules were installed as executables.
 
@@ -78,12 +83,12 @@ soldering iron and at the very least, solder headers into p0.4, p0.5,
 VDD and GND.
 
 Wire up a PL2303 or similar. Connections as follows:
-
+```
   3.3V -> Vdd
   GND  -> GND
   RXD  -> P0.4(UART TX)
   TXD  -> P0.5(UART RX)
-
+```
 ---
 
 # Device enumeration
@@ -137,7 +142,7 @@ CA-RRV-P  R0 R1 R2 R3  R4 R5 R6 R7    RP   PC
 Ok, let's dissect this a bit.  The last 4 lines are where the interact
 code starts.
 
-
+```
 chat <--- muforth word typed at command line to start host->target
           interaction.
 
@@ -148,20 +153,20 @@ CA-RRV-P  R0 R1 R2 R3  R4 R5 R6 R7    RP   PC
 ^      ^  ^                     ^   ^    ^
 |______|  |_____________________|   |    |__ Program counter
  Flags     Registers R0-R7          |_______ Return pointer
-
-R0-R7 are *stored* in bytes 0-7 of *ram* are a copy of register R0-R7 on
+ ```
+R0-R7 are *stored* in bytes 0-7 of *ram* and are a copy of register R0-R7 on
 the target.
 
 # Basics (WIP)
 
 We can read and write from/to ram, xram and flashram.
-
+```
 0 du ram
 0000  5e 5e f2 00  99 a3 00 c4  00 c8 7a 11  12 24 00 00
       ^                     ^
       |_____________________|
         Matches R0 - R7 
-
+```
 At any time we can compare what's on the host in flash/ram/xram by
 typing x after typing 0 ram/flash/xram du <enter>
 
@@ -173,12 +178,12 @@ typing x after typing 0 ram/flash/xram du <enter>
 ```
 
 Let's navigate to the area in flash where the bootloader is stored:
-
+```
 flash  Ok (chatting) (hex) (flash)
 ^      ^                         ^
 |      |_________________________|
 cmd         Response
-
+```
 ```
 1e00 du 
 1e00  c1 8c 60 ea  7b 8f 30 98  fd c2 98 af  99 22 30 99 
