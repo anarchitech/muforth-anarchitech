@@ -1,6 +1,6 @@
 ### 23 January 2023
 
-muforth now has full support for the 8051, albeit *not* as a true 
+muforth now includes full support for the 8051, albeit *not* as a true 
 Forth target, but rather as an "interactive assembly" target.
 
 The 8051 architecture is suboptimal for implementing a true Forth
