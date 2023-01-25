@@ -49,9 +49,6 @@ Currently tested and working on the following systems/platforms:
 * Termux (aarch64)
 * Cros (via chroot or that ... crostini ... thing.)
 
-
-## Building
-
 For Linux any flavor, NixOS,Termux, and OpenBSD use the master branch.  For the other BSD's use
 the bsd-usb-support branch.  Ask daf about OSX/iOS and Windows support, although we're actively looking at an [interesting idea.](https://github.com/nimblemachines/muforth/issues/34) (I doubt there's any
 support for iOS, although you never know.) Cygwin used to work with
@@ -60,6 +57,23 @@ the therapy bill was expensive.
 
 cd into the cloned repository, run ./configure.sh and then run make.
 Read the configure and post-make notes, take heed of the bit about 99-muforth.rules
+
+## Supported targets (active)
+
+  * [8051](mu/target/8051)
+  * [ARMv6-m](mu/target/ARM/v6-m) (aka Cortex-M0/M0+)
+  * [ARMv7-m](mu/target/ARM/v7-m) (aka Cortex-M3/M4)
+  * [MSP430](mu/target/MSP430) (TI)
+  * [RISC-V](mu/target/RISC-V) (initially, the SiFive FE310 and
+    GigaDevice
+    GD32VF103)
+
+## Supported targets (dormant)
+
+  * [ARMv5](mu/target/ARM/v5) (originally targeting an ARM AEB-1 board running an ARM7DI processor)
+  * [AVR](mu/target/AVR) (Atmel)
+  * [HC08 and HCS08](mu/target/HC08) (Motorola/Freescale/NXP)
+  * [PIC18](mu/target/PIC18) (Microchip)
 
 ## Running
 

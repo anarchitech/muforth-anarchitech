@@ -1,4 +1,4 @@
-### 23 January 2023
+## 23 January 2023
 
 muforth now includes full support for the 8051, albeit *not* as a true 
 Forth target, but rather as an "interactive assembly" target.
@@ -13,7 +13,7 @@ the 8051, the user will find muforth to be a lean, work focused and
 
 ---
 
-# Bootstrapping
+## Bootstrapping
 
 The intial target is the cheap and widely available Silicon Labs
 EFM8BB1, available as of this writing as a little "starter kit" (Mouser
@@ -76,7 +76,7 @@ need it later if you bork the bootloader code. ;)
 
 ---
 
-# Soldering & serial adaptor
+## Soldering & serial adaptor
 
 Hey, look at that, your board's headers are unpopulated. Break out your
 soldering iron and at the very least, solder headers into p0.4, p0.5,
@@ -91,7 +91,7 @@ Wire up a PL2303 or similar. Connections as follows:
 ```
 ---
 
-# Device enumeration
+## Device enumeration
 
 On OpenBSD using the PL2303, ln -s /dev/cuaU0 serial-target in the
 muforth/mu directory.
@@ -101,7 +101,7 @@ that's your huckleberry for serial-target.
 
 ---
 
-# Initiating chat with the target
+## Initiating chat with the target
 
 Ok. Jack that sucker in. Crank up Iron Maiden.  You're just a teenage
 dirtbag, baby.
@@ -157,7 +157,7 @@ CA-RRV-P  R0 R1 R2 R3  R4 R5 R6 R7    RP   PC
 R0-R7 are *stored* in bytes 0-7 of *ram* and are a copy of register R0-R7 on
 the target.
 
-# Basics (WIP)
+## Basics (WIP)
 
 We can read and write from/to ram, xram and flashram.
 ```
