@@ -9,6 +9,8 @@ Fork of https://github.com/nimblemachines/muforth
 muforth now includes [support for the 8051.](https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/8051/README.md)
 Work on this target is considered effectively complete at this point with only minor revisions/corrections expected.
 
+[Example application for the Silicon Labs EFM8BB1LCK dev kit here.](https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/8051/silabs/efm8/applications/README.md)https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/8051/silabs/efm8/applications/README.md
+
 ---
 
 ### UPDATE 15 October 2022
