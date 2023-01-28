@@ -28,7 +28,7 @@ The layout of the code matches the reference manual documentation, efm8bb1-rm.pd
 Here are some file stats:
 
 ```
-sfrprobe-efm8bb1.mu4: 677 LOC
+sfrprobe-efm8bb1.mu4: 571 SLOC
                       35253 Bytes file size
                       341 Bytes compiled on target
 ```
