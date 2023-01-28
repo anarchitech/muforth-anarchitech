@@ -1,0 +1,677 @@
+( sfrprobe_v3.mu4: master file of code for manipulating sfrs )
+
+| Code sections reference page number of efm8bb1-rm.pdf, EFM8 Busy Bee
+| Family EFM8BB1 Reference Manual
+
+-- If we include colon definitions in sections we need to return to meta!
+
+__meta	
+hex	
+
+: 2cr cr cr ;
+: cls "1f 0 do cr loop ;
+: clrxcr cls rx cr ;
+: nrx 0 do rx loop ;
+
+: helpsfr 
+         cls 
+         ." Currently available help words for sfrprobe. 'command' and " cr
+         ." 'subcommand' refer to forth words executed on the host. In most " cr
+         ." cases help words closely resemble the forth word that executes " cr
+         ." on the host and fetches SFR values from the target. Help words are " cr
+         ." of the form 'word?'. Page numbers refer to the EFM8 Busy Bee Family " cr
+         ." Reference Manual, efm8bb1-rm.pdf " 2cr 
+         ."  * flashcon?   -- Flash Memory/Control                     pg  30 " cr
+         ."  * devinfo?    -- Device Identification                    pg  38 " cr
+         ."  * interrupts? -- Interrupts                               pg  40 " cr
+         ."  * pwr?        -- Power Management and Internal Regulators pg  50 " cr
+         ."  * clockosc?   -- Clocking and Oscillators                 pg  54 " cr
+         ."  * rssmc?      -- Reset Sources and Power Supply Monitor   pg  59 " cr 
+         ."  * core?       -- CIP-51 Microcontroller Core              pg  66 " cr
+         ."  * ports?      -- Port I/O, Xbar, Xtrnl Ints, & Port Match pg  75 " cr
+         ."  * adc?        -- Analog-to-Digital Converter (ADC0)       pg 103 " cr
+         ."  * cmp?        -- Comparators (CMP0 and CMP1)              pg 127 " cr
+         ."  * crc?        -- Cyclic Redundancy Check (CRC0)           pg 138 " cr
+         ."  * pca?        -- Programmable Counter Array (PCA0)        pg 145 " cr
+         ."  * spi?        -- Serial Peripheral Interface (SPI0)       pg 170 " cr
+         ."  * smb?        -- System Management Bus / I2C (SMB0)       pg 183 " cr
+         ."  * timers?     -- Timers (0,1,2,3)                         pg 204 " cr
+         ."  * uart0?       -- Universal Asynchronous Rx/Tx (UART0)    pg 226 " cr
+         ."  * wdtcn?      -- Watchdog Timer (WDT0)                    pg 231 " 2cr
+         ." Any subcommands for the above words are shown in their output. "    2cr ;
+
+: help helpsfr ;
+
+__meta
+hex
+
+-- Flash Memory/Control, Chapter 4, pg 30, efm8bb1-rm.pdf
+
+label psctl@  PSCTL    r0 mov ret ;c 	| Program Store Control
+label flkey@  FLKEY    r1 mov ret ;c 	| Flash Lock and Key
+
+: flashcon@ 
+            \m flkey@ \m psctl@ 
+            "01 nrx clrxcr                                                                           
+            ."           ^^ ^^ "                                                                  cr
+            ." PSCTL ____|  |                      Program Store Control  -- 'psctl@ rx r0 c@' "  cr 
+            ." FLKEY _______|                      Flash Lock and Key     -- 'flkey@ rx r1 c@' "  2cr ;
+
+: flashcon? 
+           cls 
+           ." Currently available command(s) include: " 2cr 
+           ."  * flashcon@    -- Fetch Program Store Control and Flash Lock & Key values. " 2cr
+           ." Subcommands for the above shown in output display. " 2cr ;
+
+__meta
+hex
+
+-- Device Identification, Chapter 5, pg 38, efm8bb1-rm.pdf
+
+label devid@    DEVICEID r0 mov ret ;c 	| Device Identification
+label revid@    REVID    r1 mov ret ;c 	| Revision Identification
+label derivid@  DERIVID  r2 mov ret ;c 	| Derivative Identification
+
+: devinfo@ 
+           \m derivid@ \m revid@ \m devid@ 
+           "02 nrx clrxcr                                                                       
+           ."           ^^ ^^ ^^ "                                                           cr
+           ." DEVICEID _|  |  |                   Device Ident.     -- 'devid@   rx r0 c@' " cr
+           ." REVID    ____|  |                   Revision Ident.   -- 'revid@   rx r1 c@' " cr
+           ." DERIVID  _______|                   Derivative Ident. -- 'derivid@ rx r2 c@' " 2cr ;
+
+: devinfo? 
+          cls 
+          ." Currently available command(s) include: "                                   2cr
+          ."  * devinfo@    -- Fetch Device/Revision/Derivative Identification values. " 2cr
+          ." Subcommands for the above shown in output display. "                        2cr ;
+
+__meta
+hex
+
+-- Interrupts, Chapter 6, pg 40, efm8bb1-rm.pdf
+
+label ie@       IE       r0 mov ret ;c 	| Interrupt Enable
+label ip@       IP       r1 mov ret ;c 	| Interrupt Priority
+label eie1@     EIE1     r2 mov ret ;c 	| Extended Interrupt Enable 1
+label eip1@     EIP1     r3 mov ret ;c 	| Extended Interrupt Priority 1
+
+: interrupts@ 
+              \m eip1@ \m eie1@ \m ip@ \m ie@
+              "03 nrx clrxcr 
+              ."           ^^ ^^ ^^ ^^ "                                                            cr
+              ." IE   _____|  |  |  |                Interrupt Enable         -- 'ie@   rx r0 c@' " cr
+              ." IP   ________|  |  |                Interrupt Priority       -- 'ip@   rx r1 c@' " cr
+              ." EIE1 ___________|  |                Extended Int. Enable 1   -- 'eie1@ rx r2 c@' " cr 
+              ." EIP1 ______________|                Extended Int. Priority 1 -- 'eip1@ rx r3 c@' " 2cr ;
+
+: interrupts? 
+             cls 
+             ." Currently available command(s) include: "                                 2cr
+             ."  * interrupts@    -- Fetch Interrupt & Extended Enable/Priority values. " 2cr
+             ." Subcommands for the above shown in output display. "                      2cr ;
+
+__meta
+hex
+
+-- Power Management and Internal Regulators, Chapter 7, pg 50, efm8bb1-rm.pdf
+
+label pcon0@    PCON0    r0 mov ret ;c	| Power Control
+label vreg0cn@  REG0CN   r1 mov ret ;c 	| Voltage Regulator 0 Control
+
+: pwr@ 
+      \m vreg0cn@ \m pcon0@ 
+      "01 nrx clrxcr 
+      ."           ^^ ^^ "                                                                   cr
+      ." PCON0  ___|  |                      Power Control         -- 'pcon0@   rx r0 c@' "  cr 
+      ." REG0CN ______|                      Volt. Reg. 0 Control  -- 'p2mdout@ rx r1 c@' "  2cr ;
+
+: pwr? 
+      cls 
+      ." Currently available command(s) include: "                                 2cr
+      ."  * pwr@    -- Fetch Power Control and Voltage Regulator Control values. " 2cr
+      ." Subcommands for the above shown in output display. "                      2cr ;
+
+__meta
+hex
+
+-- Clocking and Oscillators, Chapter 8, pg 54, efm8bb1-rm.pdf
+
+label clksel@   CLKSEL   r0 mov ret ;c 	| Clock Select
+label hfo0cal@  HFO0CAL  r1 mov ret ;c 	| High Frequency Oscillator 0 Calibration
+label lfo0cn@   LFO0CN   r2 mov ret ;c 	| Low Frequency Oscillator Control
+
+: clockosc@   
+           \m lfo0cn@ \m hfo0cal@ \m clksel@ 
+           "02 nrx clrxcr 
+           ."           ^^ ^^ ^^ "                                                                cr
+           ." CLKSEL  __|  |  |                   Clock Select           -- 'clksel@  rx r0 c@' " cr
+           ." HFO0CAL _____|  |                   High Freq. Osc. 0 Cal. -- 'xbr1@    rx r1 c@' " cr
+           ." LFO0CN  ________|                   Low Freq. Osc. Ctrl.   -- 'xbr2@    rx r2 c@' " 2cr ;
+
+
+: clockosc? 
+           cls cr 
+           ." Currently available command(s) include: "                              2cr
+           ."  * clockosc@    -- Fetch Clock Select, High Frequency Oscillator 0   " cr
+           ."                    Calibration and Low Frequency Oscillator Control. " 2cr
+           ." Subcommands for the above shown in output display. "                   2cr ;
+
+__meta
+hex
+
+-- Reset Sources and Power Supply Monitor, Chapter 9, pg 59, efm8bb1-rm.pdf
+
+label rstsrc@   RSTSRC   r0 mov ret ;c 	| Reset Source
+label vdm0cn@   VDM0CN   r1 mov ret ;c 	| Supply Monitor Control
+
+: rssmc@ 
+        \m vdm0cn@ \m rstsrc@ 
+        "01 nrx clrxcr
+        ."           ^^ ^^ "                                                                    cr
+        ." RSTSRC ___|  |                      Reset Source            -- 'rstsrc@ rx r0 c@' "  cr 
+        ." VDM0CN ______|                      Supply Monitor Control  -- 'vdm0cn@ rx r1 c@' "  2cr ;
+
+: rssmc? 
+        cls 
+        ." Currently available command(s) include: "                               2cr
+        ."  * rssmc@    -- Fetch Reset Source and Supply Monitor Control values. " 2cr
+        ." Subcommands for the above shown in output display. "                    2cr ;
+
+__meta
+hex
+
+-- CIP-51 Microcontroller Core, Chapter 10, pg 66, efm8bb1-rm.pdf 
+
+label dpl@      DPL      r0 mov ret ;c 	| Data Pointer Low
+label dph@      DPH      r1 mov ret ;c 	| Data Pointer High
+label sp@       SP       r2 mov ret ;c 	| Stack Pointer
+label acc@      ACC      r3 mov ret ;c 	| Accumulator
+label b.reg@    B        r4 mov ret ;c 	| B Register
+label psw@      PSW      r5 mov ret ;c 	| Program Status Word
+
+: core@ 
+       \m psw@ \m b.reg@ 
+       \m acc@ \m sp@ 
+       \m dph@ \m dpl@ 
+       "05 nrx clrxcr 
+       ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                  cr
+       ." DPL ______|  |  |  |   |  |         Data Pointer Low    -- 'dpl@   rx r0 c@' "  cr 
+       ." DPH _________|  |  |   |  |         Data Pointer High   -- 'dph@   rx r1 c@' "  cr
+       ." SP  ____________|  |   |  |         Stack Pointer       -- 'sp@    rx r2 c@' "  cr
+       ." ACC _______________|   |  |         Accumulator         -- 'acc@   rx r3 c@' "  cr 
+       ." B   ___________________|  |         B Register          -- 'b.reg@ rx r4 c@' "  cr
+       ." PSW ______________________|         Program Status Word -- 'psw@   rx r5 c@' "  2cr ;
+
+: core? 
+       cls  
+       ." Currently available command(s) include: "                                 2cr
+       ."  * core@    -- Fetch Data Pointer Low/High, Stack Pointer, Accumulator, " cr
+       ."                B Register and Program Status Word values.               " 2cr
+       ." Subcommands for the above shown in output display. "                      2cr ;
+
+__meta
+hex
+
+-- Port I/O, Crossbar, External Interrupts, and Port Match, Chapter 11, pg 75, efm8bb1-rm.pdf
+
+label xbr0@     XBR0     r0 mov ret ;c 	| Port I/O Crossbar 0
+label xbr1@     XBR1     r1 mov ret ;c 	| Port I/O Crossbar 1
+label xbr2@     XBR2     r2 mov ret ;c 	| Port I/O Crossbar 2
+label prtdrv@   PRTDRV   r0 mov ret ;c 	| Port Drive Strength
+label p0mask@   P0MASK   r0 mov ret ;c 	| Port 0 Mask
+label p0mat@    P0MAT    r1 mov ret ;c 	| Port 0 Match
+label p0@       P0       r2 mov ret ;c 	| Port 0 Pin Latch
+label p0mdin@   P0MDIN   r3 mov ret ;c 	| Port 0 Input Mode
+label p0mdout@  P0MDOUT  r4 mov ret ;c 	| Port 0 Output Mode
+label p0skip@   P0SKIP   r5 mov ret ;c 	| Port 0 Skip
+label p1mask@   P1MASK   r0 mov ret ;c 	| Port 1 Mask
+label p1mat@    P1MAT    r1 mov ret ;c 	| Port 1 Match
+label p1@       P1       r2 mov ret ;c 	| Port 1 Pin Latch
+label p1mdin@   P1MDIN   r3 mov ret ;c 	| Port 1 Input Mode
+label p1mdout@  P1MDOUT  r4 mov ret ;c 	| Port 1 Output Mode
+label p1skip@   P1SKIP   r5 mov ret ;c 	| Port 1 Skip
+label p2@       P2       r0 mov ret ;c 	| Port 2 Pin Latch
+label p2mdout@  P2MDOUT  r1 mov ret ;c 	| Port 2 Output Mode
+label it01cf@   IT01CF   r0 mov ret ;c 	| INT0/INT1 Configuration
+
+: xbr@ 
+      \m xbr2@ \m xbr1@ \m xbr2@ 
+      "02 nrx clrxcr 
+      ."           ^^ ^^ ^^ "                                                             cr
+      ." XBRO _____|  |  |                   Port I/O Crossbar 0 -- 'xbr0@    rx r0 c@' " cr
+      ." XBR1 ________|  |                   Port I/O Crossbar 1 -- 'xbr1@    rx r1 c@' " cr
+      ." XBR2 ___________|                   Port I/O Crossbar 2 -- 'xbr2@    rx r2 c@' " 2cr ;
+
+: pds@   
+      \m prtdrv@ 
+      clrxcr
+      ."           ^^ "                                                                   cr
+      ." PRTDRV ___|                         Port Drive Strength -- 'prtdrv@  rx r0 c@' " 2cr ;
+
+: port0@ 
+        \m p0skip@ \m p0mdout@ 
+        \m p0mdin@ \m p0@ 
+        \m p0mat@ \m p0mask@ 
+        "05 nrx clrxcr 
+        ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                    cr
+        ." P0MASK  __|  |  |  |   |  |         Port 0 Mask         -- 'p0mask@  rx r0 c@' "  cr 
+        ." P0MAT   _____|  |  |   |  |         Port 0 Match        -- 'p0mat@   rx r1 c@' "  cr
+        ." P0      ________|  |   |  |         Port 0 Pin Latch    -- 'p0@      rx r2 c@' "  cr
+        ." P0MDIN  ___________|   |  |         Port 0 Input Mode   -- 'p0mdin@  rx r3 c@' "  cr 
+        ." P0MDOUT _______________|  |         Port 0 Output Mode  -- 'p0mdout@ rx r4 c@' "  cr
+        ." P0SKIP  __________________|         Port 0 Skip         -- 'p0skip@  rx r5 c@' "  2cr ;
+
+: port1@ 
+        \m p1skip@ \m p1mdout@ 
+        \m p1mdin@ \m p1@ 
+        \m p1mat@ \m p1mask@ 
+        "05 nrx clrxcr
+        ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                    cr
+        ." P1MASK  __|  |  |  |   |  |         Port 1 Mask         -- 'p1mask@  rx r0 c@' "  cr 
+        ." P1MAT   _____|  |  |   |  |         Port 1 Match        -- 'p1mat@   rx r1 c@' "  cr
+        ." P1      ________|  |   |  |         Port 1 Pin Latch    -- 'p1@      rx r2 c@' "  cr
+        ." P1MDIN  ___________|   |  |         Port 1 Input Mode   -- 'p1mdin@  rx r3 c@' "  cr 
+        ." P1MDOUT _______________|  |         Port 1 Output Mode  -- 'p1mdout@ rx r4 c@' "  cr
+        ." P1SKIP  __________________|         Port 1 Skip         -- 'p1skip@  rx r5 c@' "  2cr ;
+
+: port2@ 
+        \m p2mdout@ \m p2@ 
+        "01 nrx clrxcr
+        ."           ^^ ^^ "                                                                 cr
+        ." P2      __|  |                      Port 2 Pin Latch    -- 'p2@      rx r0 c@' "  cr 
+        ." P2MDOUT _____|                      Port 2 Output Mode  -- 'p2mdout@ rx r1 c@' "  2cr ;
+
+: intcon01@ 
+           \m it01cf@ 
+           clrxcr
+          ."           ^^ "                                                                       cr
+          ." IT01CF ___|                         INT0/INT1 Configuration  -- 'it01cf@ rx r0 c@' " 2cr ;
+
+: ports?
+        cls 
+        ." Currently available command(s) include: "                                            2cr
+        ."  * port0@    -- Fetch P0 pin latch, input/output modes, skip, match & mask values. " cr
+        ."  * port1@    -- Fetch P0 same as above. "                                            cr
+        ."  * port2@    -- Oddball, only pin latch and output mode available. Fetch values. "   cr
+        ."  * xbr@      -- Fetch Port 0-2 I/O Crossbar values. "                                cr
+        ."  * pds@      -- Fetch Port Drive Strength value. "                                   cr
+        ."  * intcon01@ -- Fetch INT0/INT1 Configuration values. "                              2cr
+        ." Subcommands for the above shown in output display. "                                 2cr ;
+
+__meta
+hex
+
+-- Analog-to-Digital Converter (ADC0), Chapter 12, pg 103, efm8bb1-rm.pdf
+
+label adc0cn0@  ADC0CN0  r0 mov ret ;c 	| ADC0 Control 0
+label adc0cn1@  ADC0CN1  r1 mov ret ;c 	| ADC0 Control 1
+label adc0cf@   ADC0CF   r2 mov ret ;c 	| ADC0 Configuration
+label adc0ac@   ADC0AC   r3 mov ret ;c 	| ADC0 Accumulator Configuration
+label adc0pwr@  ADC0PWR  r4 mov ret ;c 	| ADC0 Power Control
+label adc0tk@   ADC0TK   r5 mov ret ;c 	| ADC0 Burst Mode Track Time
+label adc0h@    ADC0H    r0 mov ret ;c 	| ADC0 Data Word High Byte
+label adc0l@    ADC0L    r1 mov ret ;c 	| ADC0 Data Word Low Byte
+label adc0gth@  ADC0GTH  r2 mov ret ;c 	| ADC0 Greater-Than High Byte
+label adc0gtl@  ADC0GTL  r3 mov ret ;c 	| ADC0 Greater-Than Low Byte
+label adc0lth@  ADC0LTH  r4 mov ret ;c 	| ADC0 Less-Than High Byte
+label adc0ltl@  ADC0LTL  r5 mov ret ;c 	| ADC0 Less-Than Low Byte
+label adc0mx@   ADC0MX   r6 mov ret ;c 	| ADC0 Multiplexer Selection
+label ref0cn@   REF0CN   r0 mov ret ;c 	| Voltage Reference Control
+
+: adccon@ 
+         \m adc0mx@ \m adc0tk@ \m adc0pwr@ 
+         \m adc0ac@ \m adc0cf@ 
+         \m adc0cn1@ \m adc0cn0@ 
+         "06 nrx clrxcr
+         ."           ^^ ^^ ^^ ^^  ^^ ^^ ^^ "                                                   cr
+         ." ADC0CN0 __|  |  |  |   |  |  |      ADC0 Control 0        -- 'adc0cn0@ rx r0 c@' "  cr 
+         ." ADC0CN1 _____|  |  |   |  |  |      ADC0 Control 1        -- 'adc0cn1@ rx r1 c@' "  cr
+         ." ADC0CF  ________|  |   |  |  |      ADC0 Configuration    -- 'adc0cf@  rx r2 c@' "  cr
+         ." ADC0AC  ___________|   |  |  |      ADC0 Accumulator Conf -- 'adc0ac@  rx r3 c@' "  cr 
+         ." ADC0PWR _______________|  |  |      ADC0 Power Control    -- 'adc0pwr@ rx r4 c@' "  cr
+         ." ADC0TK  __________________|  |      ADC0 BurstMd TrckTm   -- 'adc0tk@  rx r5 c@' "  cr 
+         ." ADC0MX  _____________________|      ADC0 Multiplexer Sel. -- 'adc0mx@  rx r6 c@' "  2cr ;
+
+: adcbytes@ 
+           \m adc0ltl@ \m adc0lth@ 
+           \m adc0gtl@ \m adc0gth@ 
+           \m adc0l@ \m adc0h@ 
+           "05 nrx clrxcr
+           ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                         cr
+           ." ADC0H   __|  |  |  |   |  |         ADC0 Data Word High Byte -- 'adc0h@   rx r0 c@' "  cr 
+           ." ADC0L   _____|  |  |   |  |         ADC0 Data Word Low  Byte -- 'adc0l@   rx r1 c@' "  cr
+           ." ADC0GTH ________|  |   |  |         ADC0 >         High Byte -- 'adc0gth@ rx r2 c@' "  cr
+           ." ADC0GTL ___________|   |  |         ADCO >         Low  Byte -- 'adc0gtl@ rx r3 c@' "  cr 
+           ." ADC0LTH _______________|  |         ADC0 <         High Byte -- 'adc0lth@ rx r4 c@' "  cr
+           ." ADC0LTL __________________|         ADC0 <         Low  Byte -- 'adc0ltl@ rx r5 c@' "  2cr ;
+
+: vrefctrl@ 
+           \m ref0cn@ 
+           clrxcr
+           ."           ^^ "                                                                        cr
+           ." REF0CN ___|                         Voltage Reference Control -- 'ref0cn@ rx r0 c@' " 2cr ;
+
+: adc? 
+      cls      
+      ." Currently available command(s) include: "                                    2cr
+      ."  * adccon@   -- Fetch ADC0 Control 0/1, Configuration, Accumulator Config, " cr
+      ."                 Power Control, Burst Mode Tracking Time and Multiplexer "    cr
+      ."                 Select values. "                                             cr
+      ."  * adcbytes@ -- Fetch ADC0 Data Word and Byte values "                       cr
+      ."  * vrefctrl@ -- Fetch Voltage Reference Control values. "                    2cr
+      ." Subcommands for the above shown in output display. "                         2cr ;
+
+__meta
+hex
+
+-- Comparators (CMP0 and CMP1), Chapter 13, pg 127, efm8bb1-rm.pdf
+
+label cmp0cn0@  CMP0CN0  r0 mov ret ;c  | Comparator 0 Control 0
+label cmp0md@   CMP0MD   r1 mov ret ;c  | Comparator 0 Mode
+label cmp0mx@   CMP0MX   r2 mov ret ;c 	| Comparator 0 Multiplexer Selection
+label cmp1cn0@  CMP1CN0  r3 mov ret ;c 	| Comparator 1 Control 0
+label cmp1md@   CMP1MD   r4 mov ret ;c 	| Comparator 1 Mode
+label cmp1mx@   CMP1MX   r5 mov ret ;c 	| Comparator 1 Multiplexer Selection
+
+: cmp@   
+      \m cmp1mx@ \m cmp1md@ 
+      \m cmp1cn0@ \m cmp0mx@ 
+      \m cmp0md@ \m cmp0cn0@ 
+      "05 nrx clrxcr
+      ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                      cr
+      ." CMP0CN0 __|  |  |  |   |  |         Comparator 0 Ctrl 0  -- 'cmp0cn0@  rx r0 c@' "  cr 
+      ." CMP0MD  _____|  |  |   |  |         Comparator 0 Mode    -- 'cmp0md@   rx r1 c@' "  cr
+      ." CMP0MX  ________|  |   |  |         Comp.0 Multiplxr Sel -- 'cmp0mx@   rx r2 c@' "  cr
+      ." CMP1CN0 ___________|   |  |         Comparator 1 Ctrl 0  -- 'cmp1cn0@  rx r3 c@' "  cr 
+      ." CMP1MD  _______________|  |         Comparator 1 Mode    -- 'cmp1md@   rx r4 c@' "  cr
+      ." CMP1MX  __________________|         Comp.1 Multiplxr Sel -- 'cmp1mx@   rx r5 c@' "  2cr ;
+
+: cmp?
+      cls
+      ." Currently available command(s) include: "                                   2cr
+      ."  * cmp@ -- Fetch Comparator 0/1 Ctrl/Mode, Multiplexer 0/1 Select values. " 2cr
+      ." Subcommands for the above shown in output display. "                        2cr ;
+
+__meta
+hex
+
+-- Cyclic Redundancy Check (CRC0), Chapter 14, pg 139, efm8bb1-rm.pdf
+
+label crc0cn0@  CRC0CN0  r0 mov ret ;c 	| CRC0 Control 0
+label crc0flip@ CRC0FLIP r1 mov ret ;c 	| CRC0 Bit Flip
+label crc0auto@ CRC0AUTO r2 mov ret ;c 	| CRC0 Automatic Control
+label crc0cnt@  CRC0CNT  r3 mov ret ;c 	| CRC0 Automatic Flash Sector Count
+label crc0in@   CRC0IN   r4 mov ret ;c 	| CRC0 Data Input
+label crc0dat@  CRC0DAT  r5 mov ret ;c 	| CRC0 Data Output
+
+: crc@   
+      \m crc0dat@ \m crc0in@ 
+      \m crc0cnt@ \m crc0auto@ 
+      \m crc0flip@ \m crc0cn0@ 
+      "05 nrx clrxcr
+      ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                      cr    
+      ." CRC0CN0  _|  |  |  |   |  |         CRC0 Control 0       -- 'crc0cn0@  rx r0 c@' "  cr 
+      ." CRC0FLIP ____|  |  |   |  |         CRC0 Bit Flip        -- 'crc0flip@ rx r1 c@' "  cr
+      ." CRC0AUTO _______|  |   |  |         CRC0 Automatic Ctrl  -- 'crc0auto@ rx r2 c@' "  cr
+      ." CRC0CNT  __________|   |  |         CRC0 Aut Flsh Sct Ct -- 'crc0cnt@  rx r3 c@' "  cr 
+      ." CRC0IN   ______________|  |         CRC0 Data Input      -- 'crc0in@   rx r4 c@' "  cr
+      ." CRC0DAT  _________________|         CRC0 Data Output     -- 'crc0dat@  rx r5 c@' "  2cr ;
+
+: crc?
+      cls 
+      ." Currently available command(s) include: "                                     2cr
+      ."  * crc@ -- Fetch CRC0 Control, Bit Flip, Automatic Control, Automatic Flash " cr
+      ."            Sector Count and Data I/O values. "                                2cr
+      ." Subcommands for the above shown in output display. "                          2cr ;
+
+__meta
+hex
+
+-- Programmable Counter Array (PCA0), Chapter 15, pg 145, efm8bb1-rm.pdf
+
+label pca0cn0@  PCA0CN0  r0 mov ret ;c 	| PCA Control
+label pca0md@   PCA0MD   r1 mov ret ;c 	| PCA Mode
+label pca0pwm@  PCA0PWM  r2 mov ret ;c 	| PCA PWM Configuration
+label pca0clr@  PCA0CLR  r3 mov ret ;c  | PCA Comparator Clear Control
+label pca0l@    PCA0L    r4 mov ret ;c 	| PCA Counter/Timer Low Byte
+label pca0h@    PCA0H    r5 mov ret ;c 	| PCA Counter/Timer High Byte
+label pca0pol@  PCA0POL  r6 mov ret ;c 	| PCA Output Polarity
+label pca0cent@ PCA0CENT r7 mov ret ;c  | PCA Center Alignment Enable
+label pca0cpm0@ PCA0CPM0 r0 mov ret ;c 	| PCA Channel 0 Capture/Compare Mode
+label pca0cpl0@ PCA0CPL0 r1 mov ret ;c 	| PCA Channel 0 Capture Module Low Byte
+label pca0cph0@ PCA0CPH0 r2 mov ret ;c 	| PCA Channel 0 Capture Module High Byte
+label pca0cpm1@ PCA0CPM1 r0 mov ret ;c 	| PCA Channel 1 Capture/Compare Mode
+label pca0cpl1@ PCA0CPL1 r1 mov ret ;c 	| PCA Channel 1 Capture Module Low Byte
+label pca0cph1@ PCA0CPH1 r2 mov ret ;c 	| PCA Channel 1 Capture Module High Byte
+label pca0cpm2@ PCA0CPM2 r0 mov ret ;c 	| PCA Channel 2 Capture/Compare Mode
+label pca0cpl2@ PCA0CPL2 r1 mov ret ;c 	| PCA Channel 2 Capture Module Low Byte
+label pca0cph2@ PCA0CPH2 r2 mov ret ;c 	| PCA Channel 2 Capture Module High Byte
+
+: pca@
+      \m pca0cent@  \m pca0pol@ 
+      \m pca0h@     \m pca0l@ 
+      \m pca0clr@   \m pca0pwm@
+      \m pca0md@    \m pca0cn0@
+      "07 nrx clrxcr
+      ."           ^^ ^^ ^^ ^^  ^^ ^^ ^^ ^^ "                                                cr
+      ." PCA0CN0  _|  |  |  |   |  |  |  |    PCA Control          -- 'pca0cn0@  rx r0 c@' " cr 
+      ." PCA0MD   ____|  |  |   |  |  |  |    PCA Mode             -- 'pca0md@   rx r1 c@' " cr
+      ." PCA0PWM  _______|  |   |  |  |  |    PCA PWM Config       -- 'pca0pwm@  rx r2 c@' " cr
+      ." PCA0CLR  __________|   |  |  |  |    PCA Comp. Clr Ctrl   -- 'pca0clr@  rx r3 c@' " cr 
+      ." PCA0L    ______________|  |  |  |    PCA Ctr/Tmr Lo Byte  -- 'pca0l@    rx r4 c@' " cr
+      ." PCA0H    _________________|  |  |    PCA Ctr/Tmr Hi Byte  -- 'pca0h@    rx r5 c@' " cr 
+      ." PCA0POL  ____________________|  |    PCA Output Polarity  -- 'pca0p0l@  rx r6 c@' " cr 
+      ." PCA0CENT _______________________|    PCA Ctr Algn Enable  -- 'pca0cent@ rx r7 c@' " 2cr ;
+
+: pcachan0@
+           \m pca0cph0@ \m pca0cpl0@ \m pca0cpm0@ 
+           "02 nrx clrxcr 
+           ."           ^^ ^^ ^^ "                                                                 cr
+           ." PCA0CPM0 _|  |  |                   PCACh0 Cptr/Cmpr Mode  -- 'pca0cpm0@ rx r0 c@' " cr
+           ." PCA0CPL0 ____|  |                   PCACh0 Cptr Mod Lo Byt -- 'pca0cpl0@ rx r1 c@' " cr
+           ." PCA0CPH0 _______|                   PCACh0 Cptr Mod Hi Byt -- 'pca0cph0@ rx r2 c@' " 2cr ;
+
+: pcachan1@
+           \m pca0cph1@ \m pca0cpl1@ \m pca0cpm1@ 
+           "02 nrx clrxcr
+           ."           ^^ ^^ ^^ "                                                                 cr
+           ." PCA0CPM1 _|  |  |                   PCACh1 Cptr/Cmpr Mode  -- 'pca0cpm1@ rx r0 c@' " cr
+           ." PCA0CPL1 ____|  |                   PCACh1 Cptr Mod Lo Byt -- 'pca0cpl1@ rx r1 c@' " cr
+           ." PCA0CPH1 _______|                   PCACh1 Cptr Mod Hi Byt -- 'pca0cph1@ rx r2 c@' " 2cr ;
+
+: pcachan2@
+           \m pca0cph2@ \m pca0cpl2@ \m pca0cpm2@ 
+           "02 nrx clrxcr
+           ."           ^^ ^^ ^^ "                                                                 cr
+           ." PCA0CPM2 _|  |  |                   PCACh2 Cptr/Cmpr Mode  -- 'pca0cpm2@ rx r0 c@' " cr
+           ." PCA0CPL2 ____|  |                   PCACh2 Cptr Mod Lo Byt -- 'pca0cpl2@ rx r1 c@' " cr
+           ." PCA0CPH2 _______|                   PCACh2 Cptr Mod Hi Byt -- 'pca0cph2@ rx r2 c@' " 2cr ;
+
+: pca? 
+      cls      
+      ." Currently available command(s) include: "                                            2cr
+      ."  * pca@      -- Fetch PCA Control, Mode, PWM Config, Comparator Clear Control, "     cr
+      ."                 Counter/Timer Low Byte, Counter/Timer High Byte, Output Polarity, "  cr
+      ."                 Center Alignment Enable values. "                                    cr  
+      ."  * pcachan0@ -- Fetch PCA Chan0 Capture/Compare Mode, Low Byte & High Byte values. " cr
+      ."  * pcachan1@ -- Fetch PCA Chan1 Capture/Compare Mode, Low Byte & High Byte values. " cr
+      ."  * pcachan2@ -- Fetch PCA Chan2 Capture/Compare Mode, Low Byte & High Byte values. " 2cr
+      ." Subcommands for the above shown in output display. "                                 2cr ;
+
+__meta
+hex
+
+-- Serial Peripheral Interface (SPI0), Chapter 16, pg 170, efm8bb1-rm.pdf
+
+label spi0cfg@  SPI0CFG  r0 mov ret ;c 	| SPI0 Configuration
+label spi0cn0@  SPI0CN0  r1 mov ret ;c 	| SPI0 Control
+label spi0ckr@  SPI0CKR  r2 mov ret ;c 	| SPI0 Clock Rate
+label spi0dat@  SPI0DAT  r3 mov ret ;c 	| SPI0 Data
+
+: spi@ 
+      \m spi0dat@ \m spi0ckr@ 
+      \m spi0cn0@ \m spi0cfg@
+      "03 nrx clrxcr 
+      ."           ^^ ^^ ^^ ^^ "                                                         cr
+      ."           |  |  |  | "                                                          cr
+      ." SPI0CFG __|  |  |  |                SPI0 Configuration -- 'spi0cfg@ rx r0 c@' " cr
+      ." SPI0CN0 _____|  |  |                SPI0 Control       -- 'spi0cn0@ rx r1 c@' " cr
+      ." SPI0CKR ________|  |                SPI0 Clock Rate    -- 'spi0ckr@ rx r2 c@' " cr 
+      ." SPI0DAT ___________|                SPI0 Data          -- 'spi0dat@ rx r3 c@' " 2cr ;
+
+: spi? 
+      cls      
+      ." Currently available command(s) include: "            2cr
+      ."  * spi@      -- Fetch SPI0 Configuration, Control, " cr
+      ."                 Clock Rate and Data values. "        cr
+      ." Subcommands for the above shown in output display. " 2cr ;
+
+__meta
+hex
+
+-- System Management Bus/I2c (SMB0), Chapter 17, pg 183, efm8bb1-rm.pdf 
+
+label smb0cf@   SMB0CF   r0 mov ret ;c 	| SMBus 0 Configuration
+label smb0tc@   SMB0TC   r1 mov ret ;c 	| SMBus 0 Timing and Pin Control
+label smb0cn0@  SMB0CN0  r2 mov ret ;c 	| SMBus 0 Control
+label smb0adr@  SMB0ADR  r3 mov ret ;c 	| SMBus 0 Slave Address
+label smb0adm@  SMB0ADM  r4 mov ret ;c 	| SMBus 0 Slave Address Mask
+label smb0dat@  SMB0DAT  r5 mov ret ;c 	| SMBus 0 Data
+
+: smb@ 
+      \m smb0dat@ \m smb0adm@ 
+      \m smb0adr@ \m smb0cn0@ 
+      \m smb0tc@ \m smb0cf@ 
+      "05 nrx clrxcr
+      ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                       cr
+      ." SMB0CF  __|  |  |  |   |  |         SMBus 0 Config         -- 'smb0cf@  rx r0 c@' "  cr
+      ." SMB0TC  _____|  |  |   |  |         SMBus 0 Tim & Pin Ctrl -- 'smb0tc@  rx r1 c@' "  cr
+      ." SMB0CN0 ________|  |   |  |         SMBus 0 Control        -- 'smb0cn0@ rx r2 c@' "  cr
+      ." SMB0ADR ___________|   |  |         SMBus 0 Slave Addr     -- 'smb0adr@ rx r3 c@' "  cr
+      ." SMB0ADM _______________|  |         SMBus 0 Slv Addr Mask  -- 'smb0adm@ rx r4 c@' "  cr
+      ." SMB0DAT __________________|         SMBus 0 Data           -- 'smb0dat@ rx r5 c@' "  2cr ;
+
+: smb? 
+      cls      
+      ." Currently available command(s)include: "                               2cr
+      ."  * smb@      -- Fetch SMBus 0 Configuration, Timing and Pin Control, " cr
+      ."                 Control, Slave Address & Mask and Data values. "       cr
+      ." Subcommands for the above shown in output display. "                   2cr ;
+
+__meta
+hex
+
+-- Timers (Timer 0/1/2/3) Chapter 18, pg 204, efm8bb1-rm.pdf (NB: Order differs wrt lo/hi bytes in manual and groups logically here.)
+
+label cc@       CKCON0   r0 mov ret ;c 	| Clock Control 0
+label t01con@   TCON     r0 mov ret ;c	| Timer 0/1 Control
+label t01mod@   TMOD     r1 mov ret ;c 	| Timer 0/1 Mode
+label t0l@      TL0      r2 mov ret ;c 	| Timer 0 Low Byte
+label t0h@      TH0      r3 mov ret ;c 	| Timer 0 High Byte
+label t1l@      TL1      r4 mov ret ;c 	| Timer 1 Low Byte
+label t1h@      TH1      r5 mov ret ;c 	| Timer 1 High Byte
+label t2con0@   TMR2CN0  r0 mov ret ;c 	| Timer 2 Control 0
+label t2l@      TMR2L    r1 mov ret ;c 	| Timer 2 Low Byte
+label t2h@      TMR2H    r2 mov ret ;c 	| Timer 2 High Byte
+label t2rll@    TMR2RLL  r3 mov ret ;c 	| Timer 2 Reload Low Byte
+label t2rlh@    TMR2RLH  r4 mov ret ;c 	| Timer 2 Reload High Byte
+label t3con0@   TMR3CN0  r0 mov ret ;c 	| Timer 3 Control 0
+label t3l@      TMR3L    r1 mov ret ;c  | Timer 3 Low Byte
+label t3h@      TMR3H    r2 mov ret ;c  | Timer 3 High Byte
+label t3rll@    TMR3RLL  r3 mov ret ;c  | Timer 3 Reload Low Byte
+label t3rlh@    TMR3RLH  r4 mov ret ;c  | Timer 3 Reload High Byte
+
+: clkctrl@ 
+          \m cc@
+          clrxcr
+          ."           ^^ "                                                           cr
+          ." CKCON0 ___|                         Clock Control 0  -- 'cc@ rx r0 c@' " 2cr ;
+   
+: timer01@ 
+          \m t1h@ \m t1l@ 
+          \m t0h@ \m t0l@ 
+          \m t01mod@ \m t01con@ 
+          "05 nrx clrxcr
+          ."           ^^ ^^ ^^ ^^  ^^ ^^ "                                                 cr
+          ." TCON    __|  |  |  |   |  |         Timer 0/1 Control -- 't01con@ rx r0 c@' "  cr 
+          ." TMOD    _____|  |  |   |  |         Timer 0/1 Mode    -- 't01mod@ rx r1 c@' "  cr
+          ." TL0     ________|  |   |  |         Timer 0 Low Byte  -- 't0l@    rx r2 c@' "  cr
+          ." TH0     ___________|   |  |         Timer 0 High Byte -- 't0h@    rx r3 c@' "  cr 
+          ." TL1     _______________|  |         Timer 1 Low Byte  -- 't1l@    rx r4 c@' "  cr
+          ." TH1     __________________|         Timer 1 High Byte -- 't1h@    rx r5 c@' "  2cr ;
+
+: timer2@ 
+         \m t2rlh@ \m t2rll@ 
+         \m t2h@ \m t2l@ 
+         \m t2con0@ 
+         "04 nrx clrxcr
+         ."           ^^ ^^ ^^ ^^  ^^ "                                                      cr
+         ." TMR2CN0 __|  |  |  |   |            Timer 2 Control 0   -- 't2con0@ rx r0 c@' "  cr 
+         ." TMR2L   _____|  |  |   |            Timer 2 Low Byte    -- 't2l@    rx r1 c@' "  cr
+         ." TMR2H   ________|  |   |            Timer 2 High Byte   -- 't2h@    rx r2 c@' "  cr
+         ." TMR2RLL ___________|   |            Timer 2 Reload Low  -- 't2rll@  rx r3 c@' "  cr 
+         ." TMR2RLH _______________|            Timer 2 Reload High -- 't2rlh@  rx r4 c@' "  2cr ;
+
+: timer3@
+         \m t3rlh@ \m t3rll@ 
+         \m t3h@ \m t3l@ 
+         \m t3con0@ 
+         "04 nrx clrxcr
+         ."           ^^ ^^ ^^ ^^  ^^ "                                                     cr
+         ." TMR3CN0 __|  |  |  |   |            Timer 3 Control 0   -- 't3con0@ rx r0 c@' " cr 
+         ." TMR3L   _____|  |  |   |            Timer 3 Low Byte    -- 't3l@   rx r1 c@' "  cr
+         ." TMR3H   ________|  |   |            Timer 3 High Byte   -- 't3h@   rx r2 c@' "  cr
+         ." TMR3RLL ___________|   |            Timer 3 Reload Low  -- 't3rll@ rx r3 c@' "  cr 
+         ." TMR3RLH _______________|            Timer 3 Reload High -- 't3rlh@ rx r4 c@' "  2cr ;
+
+
+: timers?
+         cls 
+         ." Currently available command(s) include: "                                          2cr
+         ."  * clkctrl@  -- Fetch Clock Control 0 value. "                                     cr
+         ."  * timer01@  -- Fetch Timer 0/1 control, 0/1 mode, 0 & 1 low & high bytes. "       cr
+         ."  * timer2@   -- Fetch Timer2 control, low, high, reload low & reload high bytes. " cr
+         ."  * timer3@   -- Same as Timer2 for Timer3. "                                       2cr
+         ." Subcommands for the above shown in output display. "                               2cr ;
+
+__meta
+hex
+
+-- Universal Asynchronous Receiver/Transmitter 0 (UART0), Chapter 19, pg 226, efm8bb1-rm.pdf
+
+label scon0@    SCON0    r0 mov ret ;c 	| UART0 Serial Port Control
+label sbuf0@    SBUF0    r1 mov ret ;c  | UART0 Serial Port Data Buffer
+
+: uart0@ 
+        \m sbuf0@ \m scon0@ 
+        "01 nrx clrxcr
+        ."           ^^ ^^ "                                                                    cr
+        ." SCON0   __|  |                      UART0 Ser. Port Ctrl     -- 'scon0@ rx r0 c@' "  cr 
+        ." SBUF0   _____|                      UART0 Ser. Port Data Buf -- 'sbuf0@ rx r1 c@' "  2cr ;
+
+: uart0? 
+        cls      
+        ." Currently available command(s) include: "            2cr
+        ."  * uart0@ -- Fetch UART0 Serial Port Control and, "  cr
+        ."              Serial Port Data Buffer values. "       cr
+        ." Subcommands for the above shown in output display. " 2cr ;
+
+__meta
+hex
+
+-- Watchdog Timer (WDT0), Chapter 20, pg 231, efm8bb1-rm.pdf
+
+label dog@      WDTCN    r0 mov ret ;c 	| Watchdog Timer Control
+
+: wdtcn@
+        \m dog@ 
+        clrxcr
+        ."           ^^ "                                                               cr
+        ." WDTCN ____|                         Watchdog Timer Ctrl -- 'dog@ rx r0 c@' " 2cr ;
+
+: wdtcn?
+         cls 
+         ." Currently available command(s) include: "              2cr
+         ."  * wdtcn@    -- Fetch Watchdog Timer Control values. " 2cr
+         ." Subcommands for the above shown in output display. "   2cr ;
