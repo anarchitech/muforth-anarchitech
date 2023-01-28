@@ -43,12 +43,12 @@ as bytecode.  This is why the compiled code on the target is so small.
 Remember, our goal here was *not* to get a forth kernel/system onto the 8051; 
 it's a lousy target for that.  But it *is*, like HCS08, a fine target for an 
 *interactive assembler*. daf has strived to keep the mnemonics true to the 
-MCS-51 instruction set and (and the EFM8BB1 extensions,) but as this *is* a 
+MCS-51 instruction set (and the EFM8BB1 extensions,) but as this *is* a 
 forth based system, remember you're in RPN mode.  Take a look at the code for 
 examples.
 
 Everything else is held on the host side and simply provides the UI and
-formats the data.  You don't *need* to run use this example, but it might help 
+formats the data.  You don't *need* to use this example, but it might help 
 while you get your head around the architecture. We use a version of it flashed
 to the target to aid in interactive development (and we also just write and
 flash test words on the fly.)  Forth is highly extensible and you'll figure out
@@ -95,7 +95,6 @@ CA-RRV-P  R0 R1 R2 R3  R4 R5 R6 R7    RP   PC
 Executing the word 'help'
 
 ```
-help
 Currently available help words for sfrprobe. 'command' and 
 'subcommand' refer to forth words executed on the host. In most 
 cases help words closely resemble the forth word that executes 
@@ -129,7 +128,6 @@ Any subcommands for the above words are shown in their output.
 Executing the help command adc?
 
 ```
-adc?
 Currently available command(s) include: 
 
  * adccon@   -- Fetch ADC0 Control 0/1, Configuration, Accumulator
