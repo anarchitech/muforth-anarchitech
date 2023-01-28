@@ -133,9 +133,8 @@ adc?
 Currently available command(s) include: 
 
  * adccon@   -- Fetch ADC0 Control 0/1, Configuration, Accumulator
-   Config, 
-                Power Control, Burst Mode Tracking Time and Multiplexer 
-                Select values. 
+                Config, Power Control, Burst Mode Tracking Time and 
+                Multiplexer Select values. 
  * adcbytes@ -- Fetch ADC0 Data Word and Byte values 
  * vrefctrl@ -- Fetch Voltage Reference Control values. 
 
