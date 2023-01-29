@@ -1,5 +1,8 @@
-This directory contains sample applications for the Silicon Labs Busy
-Bee EFM8BB1LCK dev kit. Currently there is one.
+This directory contains sample applications/code for the Silicon Labs Busy
+Bee EFM8BB1LCK dev kit. 
+
+If you're going to use it, it is recommended to load
+sfrprobe-efm8bb1.mu4 first.
 
 ## sfrprobe-efm8bb1.mu4 
 
@@ -147,6 +150,25 @@ Executing adccon@
 A-RRV-P  R0 R1 R2 R3  R4 R5 R6 R7    RP   PC
 00000000  00 00 f8 00  0f 1e 1f 02  00c5 1e8a
           ^^ ^^ ^^ ^^  ^^ ^^ ^^ 
+st controlled toggle of led; code compiled to target flash.
+
+      | Useage: led-init rx
+      |         led-on rx
+      |         led-off rx 
+
+__meta
+hex
+
+label led-init                      | Enable output, config crossbar
+              "10 # P1MDOUT mov     
+              "40 # XBR2 mov ret ;c
+
+label led-on                        | P1.4 active-low
+            P1 .4 cpl ret ;c
+
+label led-off  
+             P1 .4 setb ret ;c      | P1.4 high (off)
+
 ADC0CN0 __|  |  |  |   |  |  |      ADC0 Control 0        -- 'adc0cn0@ rx r0 c@' 
 ADC0CN1 _____|  |  |   |  |  |      ADC0 Control 1        -- 'adc0cn1@ rx r1 c@' 
 ADC0CF  ________|  |   |  |  |      ADC0 Configuration    -- 'adc0cf@  rx r2 c@' 
@@ -158,4 +180,29 @@ ADC0MX  _____________________|      ADC0 Multiplexer Sel. -- 'adc0mx@  rx r6 c@'
  Ok (chatting) (hex) (flash)
 ```
 
-There you have it.  Use, don't use, extend, ruthlessly pare ... it's your sandbox. 
+## derblinken1.mu4
+
+Dead simple host side controlled toggle of the onboard led.
+
+```
+-- Host controlled toggle of led; code compiled to target flash.
+
+      | Useage: led-init rx
+      |         led-on rx
+      |         led-off rx 
+
+__meta
+hex
+
+label led-init                      | Enable output, config crossbar
+              "10 # P1MDOUT mov     
+              "40 # XBR2 mov ret ;c
+
+label led-on                        | P1.4 active-low
+            P1 .4 cpl ret ;c
+
+label led-off  
+             P1 .4 setb ret ;c      | P1.4 high (off)
+```
+
+See the code file for additional examples.

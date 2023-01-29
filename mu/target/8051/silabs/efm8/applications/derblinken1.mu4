@@ -1,0 +1,45 @@
+-- Host controlled toggle of led; code compiled to target flash.
+
+      | Useage: led-init rx
+      |         led-on rx
+      |         led-off rx 
+
+__meta
+hex
+
+label led-init                      | Enable output, config crossbar
+              "10 # P1MDOUT mov     
+              "40 # XBR2 mov ret ;c
+
+label led-on                        | P1.4 active-low
+            P1 .4 cpl ret ;c
+
+label led-off  
+             P1 .4 setb ret ;c      | P1.4 high (off)
+
+comment additional-examples
+
+There's more than one way to filet and saute a cat. These
+all work with varying degrees of overhead. ;-)
+
+label led-on-setb
+                 P1 .4 setb
+                 P1 .4 clr ret ;c
+
+label led-on-orlxrl
+                   "10 # P1 orl
+                   "10 # P1 xrl ret ;c
+
+label led-on-acc
+                P1 a mov
+                "10 # a orl
+                a r3 mov     | save a copy of step to r3 
+                a P1 mov
+                "10 # a xrl
+                a r5 mov     | save a copy of step to r5, compare w/ r3
+                a P1 mov
+                a clr ret ;c | add 'a clr' to clear parity flag which
+                             | is otherwise set, cf pg 115 '94 MCS-51
+                             | User's Manual (bitsavers.org)
+
+additional-examples
