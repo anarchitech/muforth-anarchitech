@@ -205,4 +205,4 @@ label led-off
              P1 .4 setb ret ;c      | P1.4 high (off)
 ```
 
-See the code file for additional examples.
+See the [code file](https://github.com/anarchitech/muforth-anarchitech/blob/master/mu/target/8051/silabs/efm8/applications/derblinken1.mu4) for additional examples.
