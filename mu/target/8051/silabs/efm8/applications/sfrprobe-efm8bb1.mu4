@@ -1,3 +1,5 @@
+| Copyright (c) [2000,cy], cy=current year Anarchitech Collective; see LICENSE-ANARCHITECH
+
 ( sfrprobe_v3.mu4: master file of code for manipulating sfrs )
 
 | Code sections reference page number of efm8bb1-rm.pdf, EFM8 Busy Bee
