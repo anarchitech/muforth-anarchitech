@@ -60,12 +60,12 @@ label led-on-acc
 
 additional-examples
 
-| Event driven example. When switch? executes it waits until the user
-| switch tied to P0.2 is pressed and then turns the led on. When the 
-| user releases the switch the led shuts off.
+  | Event driven example. When switch? executes it waits until the user
+  | switch tied to P0.2 is pressed and then turns the led on. When the 
+  | user releases the switch the led shuts off.
 
 label switch-init
-                 "04 # P0MDOUT  | configure as output
+                 "04 # P0MDOUT mov  | configure as output
                  ret ;c
 
 label switch?
@@ -75,9 +75,9 @@ label switch?
              P0 .2 bset?    | active low, resets as high, check it
              while
              led-off acall  | keep led off while P0 bit 2 is high
-             repeat         | repeat until not true (pressed)
+             repeat         | repeat until not true 
              begin          | previous now not true, start second loop
-             P0 .2 bclr?    | if P0 bit 2 is clear (0), switch is pressed 
+             P0 .2 bclr?    | if P0 bit 2 is clear, switch is pressed 
              while
              led-on acall   | ...so turn on the led and keep it on
              repeat        
