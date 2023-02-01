@@ -2,23 +2,10 @@
 
   Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
-loading STM32F051x8 example startup code
-
-( Create a flash image containing a vector table, the ITC Forth kernel, and
-  some basic startup code.)
+( Moved F051 init code here, so it can be shared among projects.)
 
 __meta
 hex
-
-{ h @ } flash  ( save region and set to flash)
-
-( Lay down a vector table, using end of ram as initial SP)
-0 vector-table flash-vectors
-flash-vectors  ( make it the current table)
-
-{ h ! }  ( restore region pointer)
-
-ld target/ARM/v6-m/kernel-itc.mu4
 
 : wait-for-rdy  ( regaddr)
    begin  dup c@  2 and  until  ( wait for RDY bit)  drop ;
@@ -44,7 +31,7 @@ comment %%
    2 ( SW=PLL as sysclk)  RCC_CFGR tuck c!
    begin  dup c@ %1010 =  until  ( SW=PLL and SWS=PLL)  drop ;
 
-: ports-init
+: led-init
    -- Turn on clock to Port C
    ( Ports -FED_CBA- )
         [ %0000_1000  #16 << #] RCC_AHBENR set!
@@ -53,33 +40,3 @@ comment %%
 
 : wait   for next ;
 : flash-leds   %11_0000_0000 dup GPIOC_BSRR !  2_0000 wait  GPIOC_BRR ! ;
-
-here ]  ( chip-init)
-   clock-init  ports-init  flash-leds  begin again  [
-
-Reset_exc handler
-   -- Startup code!
-   -- Since we have a Forth kernel, let's write the startup code in Forth!
-   sp rp mov   #64 cells # sp sp sub  ( RP at end of flash; SP below)
-   ( chip-init)  ip  lit
-   "decafbad     top lit
-   next  ;c
-   pool,
-
-HardFault_exc handler
-   here b  ;c  ( hang)
-
-NMI_exc handler
-default-handler
-   lr bx  ;c  ( return to sender!!)
-
-
-( NOTES about the F051-Discovery board.)
-
-( LEDs are attached to PC8 and PC9.
-
-  Port  Led   Color
------------------------------
-  PC8   LD4   blue
-  PC9   LD3   green
-)

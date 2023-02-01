@@ -1,0 +1,53 @@
+( This file is part of muforth: https://muforth.nimblemachines.com/
+
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+
+loading STM32F072xB example startup code
+
+( Create a flash image containing a vector table, the ITC Forth kernel, and
+  some basic startup code.)
+
+__meta
+hex
+
+{ h @ } flash  ( save region and set to flash)
+
+( Lay down a vector table, using end of ram as initial SP)
+0 vector-table flash-vectors
+flash-vectors  ( make it the current table)
+
+{ h ! }  ( restore region pointer)
+
+ld target/ARM/v6-m/kernel-itc.mu4
+ld target/ARM/stm32/f0/72_b-init.mu4
+
+here ]  ( chip-init)
+   clock-init  led-init  flash-leds  begin again  [
+
+Reset_exc handler
+   -- Startup code!
+   -- Since we have a Forth kernel, let's write the startup code in Forth!
+   sp rp mov   #64 cells # sp sp sub  ( RP at end of flash; SP below)
+   ( chip-init)  ip  lit
+   "decafbad     top lit
+   next  ;c
+   pool,
+
+HardFault_exc handler
+   here b  ;c  ( hang)
+
+NMI_exc handler
+default-handler
+   lr bx  ;c  ( return to sender!!)
+
+( NOTES about the F072-Discovery board.)
+
+( LEDs are attached to PC6 to PC9.
+
+  Port Led Dir  Color
+-----------------------------
+  PC6  LD3  N   red
+  PC7  LD6  S   blue
+  PC8  LD4  W   orange
+  PC9  LD5  E   green
+)
