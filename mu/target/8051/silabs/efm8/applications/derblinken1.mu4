@@ -59,3 +59,27 @@ label led-on-acc
                             | User's Manual (bitsavers.org)
 
 additional-examples
+
+| Event driven example. When switch? executes it waits until the user
+| switch tied to P0.2 is pressed and then turns the led on. When the 
+| user releases the switch the led shuts off.
+
+label switch-init
+                 "04 # P0MDOUT  | configure as output
+                 ret ;c
+
+label switch?
+             led-init acall
+             switch-init acall
+             begin
+             P0 .2 bset?    | active low, resets as high, check it
+             while
+             led-off acall  | keep led off while P0 bit 2 is high
+             repeat         | repeat until not true (pressed)
+             begin          | previous now not true, start second loop
+             P0 .2 bclr?    | if P0 bit 2 is clear (0), switch is pressed 
+             while
+             led-on acall   | ...so turn on the led and keep it on
+             repeat        
+             led-off acall  | ...until the user releases it
+             ret ;c
