@@ -72,10 +72,10 @@ Groovy. Switch back to the user terminal and fire up linux:
 
 ```
 user> bash
-$ ls -la /dev/ttyS3
+$ ls -la /dev/ttyS0
 ```
 
-This should show ttyS3 owned by root:dialout and rw for both. If you
+This should show ttyS0 owned by root:dialout and rw for both. If you
 type groups you'll see you're not part of group dialout, so fix that:
 
 ```
