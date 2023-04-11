@@ -68,9 +68,10 @@ blah
 prompt> usbipd wsl attach --busid 2-4
 ```
 
-Groovy. Switch back to the user terminal:
+Groovy. Switch back to the user terminal and fire up linux:
 
 ```
+user> bash
 $ ls -la /dev/ttyS3
 ```
 
