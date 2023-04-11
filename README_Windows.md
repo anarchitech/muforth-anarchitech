@@ -53,8 +53,8 @@ Switch to the admin terminal and execute the following:
  user$ exit  (exit back to powershell admin mode)
 ```
 
-While still in the admin terminal, plug a target into a free usb port (we'll use 
- a Pico which has already had the muforth kernel uf2 flashed to it)
+While still in the admin terminal, plug a target into a free usb port; we use a Pico in this example 
+[which has already had the muforth kernel uf2 flashed to it](https://muforth.nimblemachines.com/getting-started-with-the-raspberry-pi-pico/).
 
 ```
 prompt> usbipd wsl list
