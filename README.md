@@ -6,7 +6,7 @@ Fork of https://github.com/nimblemachines/muforth
 
 ### UPDATE 04 Apr 2023
 
-muforth will [work with wsl2 in Windows 11](https://github.com/anarchitech/muforth-anarchitech/blob/master/README_Windows.md)
+muforth will [work with wsl2 on Windows 11.](https://github.com/anarchitech/muforth-anarchitech/blob/master/README_Windows.md)
 
 ### UPDATE 23 Jan 2023
 
