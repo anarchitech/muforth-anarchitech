@@ -31,6 +31,7 @@ We next need to fix linux so that it is aware of wsl so you won't need to run mu
 Do the following:
 
 ```
+user> bash (start linux)
 $ sudo touch /etc/wsl.conf
 $ sudo vi /etc/wsl.conf
 ```
