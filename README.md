@@ -56,11 +56,8 @@ Currently tested and working on the following systems/platforms:
 * Cros (via chroot or that ... crostini ... thing.)
 * Windows 11 (x86_64) via wsl2
 
-For Linux any flavor, NixOS,Termux, and OpenBSD use the master branch.  For the other BSD's use
-the bsd-usb-support branch.  Ask daf about OSX/iOS and Windows support, although we're actively looking at an [interesting idea.](https://github.com/nimblemachines/muforth/issues/34) (I doubt there's any
-support for iOS, although you never know.) Cygwin used to work with
-Windows. I **once** got it compile on Windows. **Once**. Don't ask,
-the therapy bill was expensive.  
+For Linux any flavor (including Windows 11 via wsl2,) NixOS, Termux, and OpenBSD use the master branch.  
+For the other BSD's use the bsd-usb-support branch (assuming daf keeps that branch updated.)
 
 cd into the cloned repository, run ./configure.sh and then run make.
 Read the configure and post-make notes, take heed of the bit about 99-muforth.rules
