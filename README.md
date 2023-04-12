@@ -54,6 +54,7 @@ Currently tested and working on the following systems/platforms:
 * NixOS (x86_64)
 * Termux (aarch64)
 * Cros (via chroot or that ... crostini ... thing.)
+* Windows 11 (x86_64) via wsl2
 
 For Linux any flavor, NixOS,Termux, and OpenBSD use the master branch.  For the other BSD's use
 the bsd-usb-support branch.  Ask daf about OSX/iOS and Windows support, although we're actively looking at an [interesting idea.](https://github.com/nimblemachines/muforth/issues/34) (I doubt there's any
