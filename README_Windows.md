@@ -102,7 +102,7 @@ Attention to all those fussy details you can't possibly manage because
 a list is a LIE and will NEVER SAVE YOU from the chaos and complexity of 
 the real world! Shock and awe, Tom, Shock and Awe.
 
-1) Open up a powershell terminal and open up yet another instance (you can
+1) Open up two instances of the powershell terminal (you can
 just open it as a tab! Squeal! Yay, GUI!)
 
 2) In one pop-up pastry terminal, launch your Linux:
