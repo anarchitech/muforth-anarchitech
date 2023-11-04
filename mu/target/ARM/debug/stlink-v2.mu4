@@ -2,8 +2,6 @@
 
   Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
-ld target/common/endian.mu4
-
 loading ST-LINK debug
 
 hex
@@ -13,7 +11,7 @@ hex
 0483 3748 usb-find-device  .if   ." ST-LINK/V2 "    constant stlink  .else
 0483 374b usb-find-device  .if   ." ST-LINK/V2-1 "  constant stlink  -d v2-1  .else
 
-   ." No supported USB devices found. "
+   warn" No ST-LINK devices found. "
 .then .then
 
 .ifdef stlink

@@ -2,37 +2,13 @@
 
   Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
-loading AVR serial chat (core)
+loading AVR serial (uart) chat (core)
 
 __meta
-
 hex
 
-comment %%
-
-Commands for a simple client debug stub for talking to an AVR chip over a
-uart connection.
-
-         sends            returns       cmd byte (hex)
-  ====================================================
-  SetAddr  <lo>  <hi>     nothing        10
-  ReadProgram             <byte>         11
-  ReadData                <byte>         12
-  WriteData  <byte>       nothing        13
-  Go                      nothing        14
-
-  ReadData, WriteData read and write data memory -- including the general
-        registers, stack pointer, all the i/o registers, and all the RAM.
-
-  ReadProgram reads program memory (flash)
-
-  SetAddr sets the address to be used for reading & writing memory
-
-  Go executes code from the address set by SetAddr
-%%
-
-.ndef mega164  .ndef mega324  .ndef mega644  .and .and .if
-   z" This code currently only supports the mega164/324/644 devices." abort
+.ndef mega164  .ndef mega324  .ndef mega644  .ndef mega1284  .and .and .and .if
+   error" This code currently only supports the mega164/324/644/1284 devices."
 .then
 
 comment register-use
@@ -46,43 +22,36 @@ comment register-use
 
 register-use
 
-( Start, stop, and run the application.)
-ld target/AVR/chat-app.mu4
-
-( Let's run the UART at 125kb/s. Baud rate divisor = fosc/bps/16 - 1.)
-( No, let's run the UART at 38,400 b/s. Baud rate divisor = fosc/bps/16 - 1.)
+( Let's run the UART at 38,400 b/s. Baud rate divisor = fosc/bps/16 - 1.)
 label serial-init
-   -- #8_000 ( fosc = 8M)  #125 /  #16 /  1 - >hilo
-   #8,000,000 ( fosc = 8M)  #38,400 /  #16 /  1 - >hilo
-   xl ldi  xh ldi  UBRR1H xh out  UBRR1L xl out
+   -- #8_000 ( fosc = 8M)  #125 /  ( 125kbps)
+   #8,000,000 ( fosc = 8M)  #38,400 /
+   #16 /  1- x ldiw  UBRR1H xh out  UBRR1L xl out
    %0001_1000 xl ldi  UCSR1B xl out  ( enable RX and TX)
    ( chip defaults to 8bits, 1stop, no parity at reset)
-   ( fall thru)  ;c
-
-( Called when we re-enter chat after executing code. Necessary for I2C;
-  no-op for us.)
-
-label serial-ack   ret  ;c
+   ret  ;c
 
 ( Host uses send and recv. Let's do the same here.)
 
-( For both recv-byte and send-byte we want to run the app while we are
-  either waiting for a byte to go out or to come in.
+( For both recv-byte and send-byte we want to yield while we are waiting
+  for a byte to go out or to come in.)
 
-  app-run saves and restores r0, r1 and Z around calling the app.)
+( Save and restore chat registers around the call to yield.)
+label chat-yield
+   z pushw  0 pushw  yield rcall  0 popw  z popw  ret  ;c
 
 ( Could clobber xh.)
-label recv-command-byte  ;c  ( For chat dispatch loop.)
+label recv-command-byte  ( For chat dispatch loop.)
 label recv-byte
    ( Wait for RXC - receive complete)
-   begin  app-run rcall  UCSR1A xl in  7 ( RXC) xl sbrs  again
+   begin  chat-yield rcall  UCSR1A xl in  7 ( RXC) xl sbrs  again
    UDR1 xl in  ret  ;c
 
 ( Could clobber xh.)
 label send-byte
-   xl push  ( app might clobber it; and app-run doesn't save it)
+   xl push  ( XXX maybe should be saved by yield?)
    ( Wait for UDRE - data register empty)
-   begin  app-run rcall  UCSR1A xl in  5 ( UDRE) xl sbrs  again
+   begin  chat-yield rcall  UCSR1A xl in  5 ( UDRE) xl sbrs  again
    xl pop  UDR1 xl out  ret  ;c
 
 label recv-word
@@ -126,5 +95,5 @@ label write-flash-cmd
    recv-word rcall  x 0 movw  recv-byte rcall ( cmd)  do-spm rcall
    2 z adiw  SPMCSR xl in  send-byte rjmp  ;c
 
-( Load chat entry, dispatch, and init.)
+( Load chat entry and command loop.)
 ld target/AVR/chat-loop.mu4

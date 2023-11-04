@@ -112,38 +112,87 @@ assembler
  3 constant g1
  4 constant g2
  5 constant g3
+ 6 constant g4
+ 7 constant g5
+ 8 constant g6
+ 9 constant g7
 ( XXX do we need more than this?
-( 6-13 free)
+( 10-13 free)
 14 constant u   ( user pointer low, or the pair)
 14 constant ul  ( user pointer low)
 15 constant uh  ( user pointer high)
+
+( Only registers 16-31 can be used in immediate instructions, so we give
+  friendly names to several "high" scratch registers.)
+
 16 constant h0  ( general purpose scratch - high)
 17 constant h1
 18 constant h2
 19 constant h3
-( 20 free)
-( 21 free)
-22 constant k   ( literal - immediate - low, or the pair)
-22 constant kl  ( literal - immediate - low)
-23 constant kh  ( literal high)
-24 constant t   ( top low, or the pair)
-24 constant tl  ( top low)
-25 constant th  ( top high)
+20 constant h4
+21 constant h5
+22 constant h6
+23 constant h7
+
+( The top six registers make three 16-bit register pairs; these can all be
+  used as pointers. The top four pairs can be incremented and decremented
+  as words.)
+
+24 constant w     ( a generic "working" register)
+24 constant wl
+25 constant wh
 26 constant x
 26 constant xl
 27 constant xh
-28 dup constant y    constant s   ( data stack pointer low, or the pair)
-28 dup constant yl   constant sl  ( data stack pointer low)
-29 dup constant yh   constant sh  ( data stack pointer high)
+28 constant y
+28 constant yl
+29 constant yh
 30 constant z
 30 constant zl
 31 constant zh
+
+( These are the Forth synonyms:)
+\a h6 constant k   ( literal - immediate - low, or the pair)
+\a h6 constant kl  ( literal - immediate - low)
+\a h7 constant kh  ( literal high)
+
+\a w  constant t   ( top low, or the pair)
+\a wl constant tl  ( top low)
+\a wh constant th  ( top high)
+
+\a y  constant s   ( data stack pointer low, or the pair)
+\a yl constant sl  ( data stack pointer low)
+\a yh constant sh  ( data stack pointer high)
 forth
+
+( Help the disassembler print nicer register names.)
+
+: .lr  ( reg)  1 and z" lh" + c@ emit  space ;
+
+( These are common to assembler and Forth usages.)
+: .common-regname  ( reg)
+   radix preserve  decimal
+   dup         2 u< if  ." r"      u. ^ then
+   dup        10 u< if  ." g"  2 - u. ^ then
+   dup -2 and 14 =  if  ." u"     .lr ^ then  ( user pointer)
+   dup        16 u< if  ." r"      u. ^ then
+                        ." h" 16 - u. ;
+-: ( reg)
+   dup 22 u< if  .common-regname ^ then
+   dup 24 u< if  ." h" 16 - u. ^ then
+       24 - dup 2/ z" wxyz" + c@ emit  .lr ;
+: asm-regs  [ #] is .regname ;  asm-regs  ( default)
+
+-: ( reg)
+   dup 22 u< if  .common-regname ^ then
+       22 - dup 2/ z" ktxsz" + c@ emit  .lr ;
+: forth-regs  [ #] is .regname ;
 
 ( Basic stack macros.)
 : ?regpair   ( pair)  dup 1 and
   if  error" got odd register number - not a pair"  then ;
 
+assembler
 : dpush  ( reg)  asm{  -y  \f swap  st } ;
 : dpop   ( reg)  asm{  y+  \f swap  ld } ;
 
@@ -155,9 +204,39 @@ forth
 : pushw  ( pair)  ?regpair  asm{  dup  1+ push  push } ;  ( assembler's push!)
 : popw   ( pair)  ?regpair  asm{  dup  pop  1+ pop } ;    ( .. and pop!)
 
+( For loading and storing register pairs.)
+: ldw  ( offset pair)  ?regpair  asm{  2dup lds  1 1 v+  lds } ;
+: stw  ( offset pair)  ?regpair  asm{  2dup sts  1 1 v+  sts } ;
+
+( For dealing with "user" variables in a multi-tasker. ldu and stu assume
+  that the y register points to the task's user area.)
+
+: ldu  ( offset reg)  swap  asm{  ,y  \f swap  ld } ;
+: stu  ( offset reg)  swap  asm{  ,y  \f swap  st } ;
+
+: lduw  ( offset pair)  ?regpair  asm{  2dup ldu  1 1 v+  ldu } ;
+: stuw  ( offset pair)  ?regpair  asm{  2dup stu  1 1 v+  stu } ;
+
+( For loading 16-bit immediate values easily.)
+: ldiw  ( immed16 pair)
+   ?regpair push  >hilo  asm{  \f r@ ldi  \f pop 1+ ldi } ;
+
+( For reading and writing the stack pointer.
+
+  If you know that interrupts are disabled - eg, right after reset - you
+  can use sp!-iclear instead of sp! .)
+
+: sp!-iclear  ( pair)  ?regpair  asm{  SPH over 1+ out  SPL \f swap    out } ;
+: sp@         ( pair)  ?regpair  asm{  SPL over    in   SPH \f swap 1+ in } ;
+
+: sp! ( pair)
+   ?regpair  dup \a g0 = if drop error" can't use g0 with sp!" then
+   asm{  SREG g0 in  cli  sp!-iclear  SREG g0 out } ;
+
 ( Macros that make sense for Forth:)
 : <dup>   asm{  t dpushw } ;  ( push top onto D stack)
 : <drop>  asm{  t dpopw } ;   ( pop top of D stack into top)
+forth
 
 
 -- ------------------------------------------------------------------------
@@ -308,27 +387,28 @@ forth
 mode __target-colon
 
 
-.ifdef #boot
-   ( calculate start of boot space)
-   #flash  #boot  .ifdef bootsz  bootsz >>  .then  -  constant @boot
+( Interrupt vectors and handlers.)
+#flash 16 Ki u< .if
+
+( Chip has small vectors - each entry is a single-word rjmp instruction.)
+
+: vectors  ( vector# - offset)  2* ;
+: @vector  ( vector# - addr)  vectors  \m origin  + ;
+: vector,  ( vector# dest)  ( compile rjmp to handler)
+   dp preserve  swap  @vector \m goto  \a rjmp ;
+
 .else
-   ." The selected device doesn't support a separate bootloader memory space."
-   ." Setting @boot to the end of flash."
-   #flash  constant @boot  ( not used - set it to past end of flash)
+
+( Chip has big vectors - each entry is a two-word jmp instruction.)
+: vectors  ( vector# - offset)  4 * ;
+: @vector  ( vector# - addr)  vectors  \m origin  + ;
+: vector,  ( vector# dest)  ( compile jmp to handler)
+   dp preserve  swap  @vector \m goto  \a jmp ;
+
 .then
 
-
-( Interrupt vectors and handlers.)
-: big-vectors?   [ #flash  16 Ki u< not #] ;
-: vectors  ( vector# - offset)  big-vectors?  if  4 * ^  then  2* ;
-: @vector  ( vector# - addr)  vectors  \m origin  + ;
-
-( Calculate the _offset_ past the vectors.)
-: #vectors   [ \eq LAST_VECTOR 1+ vectors #] ;
-
-: vector,  ( vector# dest)  ( compile jmp or rjmp to handler)
-   dp preserve
-   swap  @vector \m goto  big-vectors? if  \a jmp  ^  then  \a rjmp ;
+( How many vectors are there?)
+\eq LAST_VECTOR constant #vectors
 
 ( Return true if vector has _not_ been set. For two-word vectors - on
   devices with 16Ki and larger flash - assume that if first word - the jmp
@@ -342,37 +422,33 @@ meta
 ( Set all unset vectors to point to \m here.)
 : default-handler
    ( Set all unset handlers to current address.)
-   0  \eq LAST_VECTOR 1+  for
+   0  #vectors  for
       dup unvectored? if  dup  \m handler  ( set it)  then  1+  next
    drop ;
 
-( Now that we know the origins of all the regions and the size and number
-  of the vectors, let's make a word that skips the vectors - in the current
-  space! - and one that gives us a clean slate.)
-
-( XXX Assuming no allocations have yet been done, this could be defined more
-  simply as "#vectors allot".)
-
-: skip-vectors   \m origin  #vectors +  \m goto ;
 forth
 
-: clean-slate
-   wipe  ( erase all memory images)
-   eeprom    0 region!
-   ram    @ram region!
-   signature   @boot [ 1 Ki 2/ #] - region!
-   boot  @boot region!
-   app       0 region! ;
 
-clean-slate  ( leaves us in app region)
+( Initialization of memory images and regions. We need the above vector
+  code to calculate everything.)
 
+: erase-image   'image #image "ff fill ;  ( fills *current* image)
+: wipe
+   ram      @ram region!  erase-image
+   eeprom      0 region!  erase-image
+   boot    @boot region!  erase-image  ( erases entire flash image)
+   flash       0 region!
 
-meta
+   #vectors vectors \m allot ( "application" starts after vectors) ;
+
+wipe  ( leaves flash as current region)
+
 
 ( Create a new target names. A name is a target word which is defined as a
   _constant_ equal to its code field address, and which compiles itself
   when executed.)
 
+meta
 : name    \m here  current preserve  target constant ;
 : code    \m name  __asm ;
 : :       \m name  __target-colon ;
@@ -387,6 +463,9 @@ meta
 
 ( Use hook to define the hook. This creates a label and compiles a long
   jump. Then resolve using hooks, which recompiles the jmp to point to here.)
+
+( XXX should we use rjmp on devices with less than 16Ki flash? We could put
+  the definitions of hook and hooks in an ifdef similar to the vector code.)
 
 : hook    \m label  0 \a jmp  __meta ;
 : hooks   dp preserve  \m here  .labels. chain' execute  \m goto  \a jmp ;
@@ -440,7 +519,7 @@ meta
 : string,  ( a u)
    \m here image+ swap  ( a image u)  dup \m allot  cmove ;
 
-: "   char " parse  \m string, ;
+: ,"   char " parse  \m string,  \m cr, ;
 
 ( Save muforth commit, creation time, and build command. End the signature,
   and align.)

@@ -80,7 +80,7 @@ comment
 : Ah  ( addr op - lo hibits)
    over #16 u>>  dup 3e and 3 <<  swap 1 and  or  or ;
 
-: ljmp  ( a32)    constant does> @ ( a32 op)  swap 2/ swap  Ah op, op, ;
+: _ljmp  ( a32)    constant does> @ ( a32 op)  swap 2/ swap  Ah op, op, ;
 
 ( Branch and jump plumbing.)
 
@@ -104,7 +104,7 @@ comment
 
 : too-far   error" relative jump out of range" ;
 ( XXX: fix to generate long call/jmp when necessary)
-: rjmp  ( dest)  constant does> @  ( dest op)  swap rel12? if  or op,  ^ then
+: _rjmp  ( dest)  constant does> @  ( dest op)  swap rel12? if  or op,  ^ then
    too-far ;
 
 assembler
@@ -131,8 +131,14 @@ assembler
 2800 2op or
 2c00 2op mov
 9c00 2op mul
-: tst  dup \a and ;  ( tst == and Rd,Rd)
-: clr  dup \a eor ;  ( clr == eor Rd,Rd)
+
+( WARNING: Using clr to set a register to zero affects the condition
+  codes. If you don't want to change the cond codes you can use "0 reg
+  ldi", but be aware that it only works for the high 16 registers, whereas
+  clr works for all 32.)
+
+: clr  ( reg)  dup \a eor ;  ( clr == eor Rd,Rd)
+: tst  ( reg)  dup \a and ;  ( tst == and Rd,Rd)
 
 ( bi - byte immed. pppp kkkk dddd kkkk - r16-31)
 forth
@@ -163,8 +169,8 @@ assembler
 : rol  dup \a adc ;  ( rol == adc Rd,Rd)
 
 ( long jump and call - pppp pppk kkkk pppk, kkkk kkkk kkkk kkkk)
-940c ljmp jmp
-940e ljmp call
+940c _ljmp jmp
+940e _ljmp call
 
 ( STATUS bit set & clear)
 forth
@@ -293,8 +299,8 @@ assembler
 : out  ( addr Rd)  40 within-io? if  _out ^  then  20 u+  \a sts ;
 
 ( rel jump and call - pppp kkkk kkkk kkkk)
-c000 rjmp rjmp
-d000 rjmp rcall
+c000 _rjmp rjmp
+d000 _rjmp rcall
 
 ( Load, store, and test bits in registers.)
 forth
@@ -503,7 +509,7 @@ assembler
 
 ( if compiles "branch if bit clr")
 : if      ( bit - src)    cjmp, ;
-: always  ( - src)        rjmp, ;
+: never   ( - src)        rjmp, ;
 : then    ( src)          \m here \a resolve> ;
 : else    ( src1 - src2)  rjmp, swap  \a then ;
 : begin   ( - dest)       \m here ;

@@ -149,7 +149,7 @@ variable pp ( programming pointer - contains a target address)
 : pp&  ( b)    pp @  image-c!  1 pp +! ;
 : pp*  ( - b)  pp @  image-c@  1 pp +! ;
 
-: pp-byte  ( - word-addr)  pp @         ; ( pp, as byte pointer)
+: pp-byte  ( - byte-addr)  pp @         ; ( pp, as byte pointer)
 : pp-word  ( - word-addr)  pp @  u2/    ; ( pp, as word pointer)
 : pp-host  ( - host-addr)  pp @  image+ ; ( pp, as host [image] pointer)
 
@@ -159,7 +159,7 @@ variable pp ( programming pointer - contains a target address)
   versions print a . for every 128 bytes read.)
 
 : read-flash-slowly
-   app  erase-image  0 pp !
+   flash  erase-image  0 pp !
    +prog  fast-clock
    [ 1 Ki #64 / #] for
       #64 for  ( 64 words, 128 bytes)
@@ -175,7 +175,7 @@ variable pp ( programming pointer - contains a target address)
   buffer this size! So let's always read 128 byte chunks instead.)
 
 : read-flash
-   app  erase-image  0 pp !
+   flash  erase-image  0 pp !
    [ #flash #128 / #] for
       20  pp-word  8  pp-host  #128  avr.BulkRead
       #128 pp +!
@@ -233,8 +233,7 @@ b/page 2/  constant w/page
    next ;
 
 : prog-flash
-   cr  ." Writing flash (application)"  app  prog-region
-   cr  ." Writing flash (signature)"  signature  prog-region
+   cr  ." Writing flash (application)"  flash  prog-region
    cr  ." Writing flash (bootloader)"  boot  prog-region ;
 
 ( NOTE: We program eeprom a byte at a time since the 8515 lacks page
@@ -255,9 +254,10 @@ b/page 2/  constant w/page
    next ;
 
 : prog
-   cr  ." REMINDER: Have you checked in muforth and projects/ code?
-You should if you want the signature's commits to be correct!"  cr
-   radix preserve  hex
+   cr  warn"
+You should commit your changes *before* programming the flash
+if you want the signature to reference the correct commits!
+"  radix preserve  hex
    h preserve
    +prog  ( slow-clock)  erase-chip  prog-fuses  -prog
    +prog  fast-clock  prog-flash  prog-eeprom  prog-locks  -prog ;
@@ -276,7 +276,7 @@ You should if you want the signature's commits to be correct!"  cr
 
 : verify-flash
    cr  ." Verifying flash "
-   app  0 pp !  #flash ( len)
+   flash  0 pp !  #flash ( len)
    #127 +  #128 /  for
       20  pp-word  8  pad  #128  avr.BulkRead
       verify-pad
@@ -311,24 +311,24 @@ You should if you want the signature's commits to be correct!"  cr
    h preserve
    token, create-file ( fd)
    ( header)  dup  " muforth AVR img "  write
-   ( flash)   dup  app     'image  #image  write
+   ( flash)   dup  flash   'image  #image  write
    ( eeprom)  dup  eeprom  'image  #image  write
    ( fuses)   dup                 fuses  8       write
    ( lock bits)  dup              locks  8       write
    close-file ;
 
 : read-image
-   clean-slate
-   app     #flash   \m allot ( appear to have filled the flash and eeprom)
+   wipe
+   flash   #flash   \m allot ( appear to have filled the flash and eeprom)
    eeprom  #eeprom  \m allot ( ... so prog and verify will work)
 
    token, open-file-ro ( fd)
    ( check header)  dup  pad #16  read  #16 xor if  error" no header"  then
       " muforth AVR img " pad #16  string= not if  error" not an AVR image"  then
-   ( read flash)   dup  app     'image  #image  read  u.
+   ( read flash)   dup  flash   'image  #image  read  u.
    ( read eeprom)  dup  eeprom  'image  #image  read  u.
    ( read fuses)   dup                 fuses  8       read  u.
    ( read lock bits)  dup              locks  8       read  u.
-   close-file  app ;
+   close-file  flash ;
 
 .then  ( avr.Hello)

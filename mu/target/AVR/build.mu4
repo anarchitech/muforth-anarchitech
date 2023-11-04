@@ -4,9 +4,9 @@
 
 ( Load the AVR build environment.)
 
-( Concentrating on JS16 now.)
--- -d via-disco
--d via-s08
+( Using STM32 board.)
+-d via-disco
+-- -d via-s08
 
 ld lib/host-prompt.mu4        ( helpful prompt when in host mode)
 
@@ -19,7 +19,6 @@ ld target/AVR/chains.mu4      ( metacompiler dictionary chains)
 ld target/AVR/device/supported.mu4
 ld lib/intel-hex.mu4
 -- ld target/AVR/terminal.mu4
-ld target/common/endian.mu4
 ld target/AVR/memory.mu4      ( basic target memory management)
 ld target/AVR/asm-alts.mu4    ( factory and alternate opcode names)
 ld target/AVR/asm.mu4
@@ -30,8 +29,17 @@ ld target/AVR/meta.mu4        ( metacompiler, baby!)
 ld target/AVR/interact.mu4    ( interaction with target)
 
 .ifdef via-disco
-   -d avr
-   ld target/ARM/stm32/atmel-spi-programming-host.mu4
+   ( We need to talk to the ST-LINK. Load a stripped-down version of the
+     support code.)
+
+   -d stlink-ram-only
+   ld target/ARM/debug/stlink-v2.mu4
+
+   .ifdef st.read    -- found an ST-LINK
+      -d avr
+      ld target/ARM/stm32/atmel-spi-programming-host.mu4
+      ld target/AVR/chat-iic-via-stm32-host.mu4
+   .then
 .then
 
 .ifdef via-s08
@@ -39,7 +47,9 @@ ld target/AVR/interact.mu4    ( interaction with target)
 
    .ifdef usb-target
       ld target/S08/chat-usb-host.mu4
-      ld target/S08/avrprog-usb-host.mu4
+      .ifdef spi-prog
+         ld target/S08/avrprog-usb-host.mu4
+      .then
 
    .ifdef mega8515  ( use serial chat - chip lacks TWI interface)
       ld target/S08/avrchat-serial-usb-host.mu4  ( chat over serial over USB)
@@ -52,18 +62,35 @@ ld target/AVR/interact.mu4    ( interaction with target)
 
    .else .ifdef serial-target
       ld target/S08/chat-host.mu4
-      ld target/S08/avrprog-serial-host.mu4
+      .ifdef spi-prog
+         ld target/S08/avrprog-serial-host.mu4
+      .then
       ld target/S08/iic-serial-host.mu4
       -- ld target/S08/iic-chat-serial-host.mu4
       -- ld target/AVR/chat-iic-host.mu4  ( IIC chat)  ( same as for USB!)
 
    .else ( unsupported connected device)
-      z" Unsupported connected device."  abort
+      error" Unsupported connected device."
 
    .then .then
 .then  ( via-s08)
 
-ld target/AVR/avrprog-spi.mu4
+( Programming the flash over SPI and programming it over chat use some
+  of the same *vocabulary*, and the user generally wants one and not the
+  other, so let's only load the SPI programming code when spi-prog is
+  defined.
+
+  NOTE: SPI programming is the *only* way to change the fuses and lock bits.)
+
+( This will define fuses and locks but skip everything else unless spi-prog
+  is defined.)
+ld target/AVR/avrprog-spi.mu4    ( flash programming over SPI)
+
+( Load *unless* we have loaded the SPI programming code.)
+.ifndef spi-prog
+   ld target/AVR/flash.mu4       ( flash programming over chat)
+.then
+
 .ifndef target-tty
    ld target/common/serial.mu4
 .then
@@ -74,4 +101,4 @@ __meta
 hex
 
 ( A sensible default: start compiling at application start.)
-app
+flash
