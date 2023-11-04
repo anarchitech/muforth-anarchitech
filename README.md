@@ -4,6 +4,14 @@ Fork of https://github.com/nimblemachines/muforth
 
 ---
 
+### UPDATE 04 Nov 2023
+
+After careful consideration, we're no longer syncing this fork to upstream.  Instead, we'll be [melding](https://meldmerge.org/) with
+a vanilla copy of upstream and then pushing the changes we want here and ignoring what we don't want or need.  We've found we 
+avoid a lot of tedious git gymnastics this way.
+
+---
+
 ### UPDATE 04 Apr 2023
 
 muforth will [work with wsl2 on Windows 11.](https://github.com/anarchitech/muforth-anarchitech/blob/master/README_Windows.md)
