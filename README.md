@@ -1,6 +1,9 @@
 # muforth
 
-Fork of https://github.com/nimblemachines/muforth
+muforth is a [tethered Forth system](https://github.com/nimblemachines/muforth#tethered-vs-self-hosted) for programming various
+microcontrollers, either standalone (breadboarded) chips or developer boards.
+
+This is an active [fork of the original repository](https://github.com/nimblemachines/muforth).
 
 ---
 
