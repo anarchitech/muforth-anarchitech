@@ -210,7 +210,7 @@ Ok prompt. I'm in the minority.)
 
 Official documentation for muforth at present is thin.  Most of it can be found in
 commit messages or in the code comment sections.  Issues, both closed and open on the
-[master branch](https://github.com/nimblemachines/muforth) can be a source of useful
+[upstream repository](https://github.com/nimblemachines/muforth) can be a source of useful
 information.
 
 In this fork we're trying add documentation in the form of README's in the root directory,
