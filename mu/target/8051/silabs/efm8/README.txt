@@ -82,6 +82,12 @@ muforth/mu directory.
 On Archlinux, the PL2303 *in this case* enumerates as /dev/ttyUSB0, so
 that's your huckleberry for serial-target.
 
+Reminder: regardless of OS choice, you'll need to find out who owns
+serial-target.  For example, on OpenBSD /dev/cuaU0 is owned by
+root and group dialer, so you'll need to run:
+
+     doas usermod -G dialer yourUserName
+
 Ok. Jack that sucker in. Crank up Iron Maiden.  You're just a teenage
 dirtbag, baby.
 
