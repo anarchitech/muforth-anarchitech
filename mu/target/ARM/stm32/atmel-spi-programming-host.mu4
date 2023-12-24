@@ -1,4 +1,4 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
   Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
@@ -63,10 +63,10 @@ hex
 
 variable spy  ( to spy on the protocol)
 : spy-write  ( buf count)
-   spy @ if  cr  for  c@+ swap  ." >".h8_  next  drop ^  then  2drop ;
+   spy @ if  cr  for  c@+ swap  ." >" .h8_  next  drop ^  then  2drop ;
 
 : spy-read   ( buf count)
-   spy @ if  cr  for  c@+ swap  ." <".h8_  next  drop ^  then  2drop ;
+   spy @ if  cr  for  c@+ swap  ." <" .h8_  next  drop ^  then  2drop ;
 
 ( Testing)
 : st@  ( a - w)  ( read a word of memory via ST-LINK)

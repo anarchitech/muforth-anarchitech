@@ -1,8 +1,104 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
   Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
-loading PIC18 memory image
+loading PIC18 memory
+
+decimal
+
+( Define the basics of the target's memory.)
+
+( Program memory addresses are 22 bits. The PC is 21 bits, but the largest
+  PIC18 parts have only 128 KiB of flash.
+
+  Flash             : 00_0000 - 1f_ffff
+  User IDs          : 20_0000 - 20_001f
+  Device info area  : 2c_0000 - 2c_00ff
+  Config words      : 30_0000 - 30_????
+  EEPROM            : 38_0000 - 38_????
+  Device config info: 3c_0000 - 3c_????
+  Revision ID       : 3f_fffc - 3f_fffd
+  Device ID         : 3f_fffe - 3f_ffff
+
+  We want images for the flash, the config words, and [maybe] the EEPROM.
+)
+
+ 2 constant bytes/cell
+         -d little-endian
+
+ld target/common/memory.mu4   ( generic memory image support)
+
+( Two memory aspaces: flash/id/config/eeprom, and data [ram + i/o].)
+
+22 make-aspace  ( flash/id/config/eeprom)
+   dup #flash make-image
+          dup make-region flash
+              make-region boot
+
+      dup 256 make-image  ( XXX how big is big enough?)
+              make-region user-id
+
+      dup 256 make-image  ( XXX how big is big enough?)
+              make-region config
+
+      #eeprom make-image
+              make-region eeprom
+
+( XXX Is the flash space choose-image totally chip-specific? Or can we do
+  something like this for everything:)
+
+-: ( target)  ( choose an image from an address in flash space)
+   dup "20_0000 u< if  drop flash ^  then
+   dup "30_0000 u< if  drop user-id ^  then
+       "38_0000 u< if       config ^  then
+                            eeprom ;
+
+( Install choose-image in the flash aspace.)
+flash 'choose-image !
+
+( Since on some PIC18 families the ram starts at a non-zero offset into
+  data space - specifically, at @ram - we want to make sure that the ram
+  region - from @ram to @ram #ram + - fits into the ram image, which needs to
+  be a power of 2 in size.
+
+  The easiest way to do this is to take the larger of @ram and #ram - we
+  assume they are both powers of 2! - and double it.)
+
+( For the data aspace we keep the default of "drop" for choose-image.)
+14 make-aspace  ( data: ram + i/o)
+   @ram #ram max 2* make-image  ( ensure that [@ram #ram +] is within the ram image)
+                    make-region ram
+
+comment ~~target-comparison~~
+( On 8051, wipe is per-image. This code is found in 8051/memory)
+: wipe   ( origin)
+   region! ( reset start and end pointers)
+   'image #image "ff fill  ( erase, like flash or eprom) ;
+
+"20 ram wipe  ( skip the banked registers)
+ 0 xram wipe
+0 flash wipe
+
+( On AVR, wipe is global. This code is found in AVR/meta.)
+
+( Initialization of memory images and regions. We need the above vector
+  code to calculate everything.)
+
+: erase-image   'image #image "ff fill ;  ( fills *current* image)
+: wipe
+   ram      @ram region!  erase-image
+   eeprom      0 region!  erase-image
+   boot    @boot region!  erase-image  ( erases entire flash image)
+   flash       0 region!
+
+   #vectors vectors \m allot ( "application" starts after vectors) ;
+
+wipe  ( leaves flash as current region)
+~~target-comparison~~
+
+
+
+.ifdef legacy-pic-memory
 
 ( NOTE: Cribbed from AVR)
 
@@ -189,3 +285,5 @@ forth
 : boot!    ( boot-origin)  dup 'boot  2!  ( set ptr and origin to origin) ;
 : ee!    ( eeprom-origin)  dup 'ee    2!  ( set ptr and origin to origin) ;
 : sig!      ( sig-origin)  dup 'sig   2!  ( set ptr and origin to origin) ;
+
+.then  ( ifdef legacy)
