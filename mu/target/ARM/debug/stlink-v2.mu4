@@ -1,4 +1,4 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
   Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
@@ -9,7 +9,7 @@ hex
 .ifdef hid-find-device  ( if yes, we are running Linux or OSX; if no, BSD)
 
 0483 3748 usb-find-device  .if   ." ST-LINK/V2 "    constant stlink  .else
-0483 374b usb-find-device  .if   ." ST-LINK/V2-1 "  constant stlink  -d v2-1  .else
+0483 374b usb-find-device  .if   ." ST-LINK/V2-1 "  constant stlink  -d stlink-v2-1  .else
 
    warn" No ST-LINK devices found. "
 .then .then
@@ -24,7 +24,7 @@ hex
 : done   stlink  usb-close ;
 
 : uread   ( buf len - #read)  1  stlink  usb-read-pipe ;
-.ifdef v2-1
+.ifdef stlink-v2-1
 : uwrite  ( buf len)          1  stlink  usb-write-pipe ;
 .else
 : uwrite  ( buf len)          2  stlink  usb-write-pipe ;
@@ -40,8 +40,13 @@ hex
     usbdevs -d
 )
 
-z" /dev/ugen0.01" open-file-ro  constant stlink-read
-z" /dev/ugen0.02" open-file-wo  constant stlink-write
+.ifdef stlink-v2-1
+   z" /dev/ugen3.01" open-file-rw  dup constant stlink-read
+                                       constant stlink-write
+.else
+   z" /dev/ugen0.01" open-file-ro  constant stlink-read
+   z" /dev/ugen0.02" open-file-wo  constant stlink-write
+.then
 
 : uread   ( buf len - #read)  stlink-read   usb-read ;
 : uwrite  ( buf len )         stlink-write  usb-write ;
