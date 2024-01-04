@@ -7,6 +7,18 @@ This is an active [fork of the original repository](https://github.com/nimblemac
 
 ---
 
+### UPDATE 04 Jan 2024
+
+This came up recently on the [original repo](https://github.com/nimblemachines/muforth.git) so we might as well make this clear here:
+
+We don't accept pull requests.  If you have some code you'd like to include
+file an issue and we'll take a look at it.
+
+Don't take this personally.  We just don't have the bandwidth for chasing
+cats around the tree.
+
+---
+
 ### UPDATE 04 Nov 2023
 
 After careful consideration, we're no longer syncing this fork to upstream.  Instead, we'll be [melding](https://meldmerge.org/) with
