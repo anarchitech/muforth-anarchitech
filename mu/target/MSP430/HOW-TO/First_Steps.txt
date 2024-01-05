@@ -1,0 +1,155 @@
+============================================================
+        First Steps, aka What The Fuck Do I Do Now?
+============================================================
+
+I have no idea how or why you got here.  Curiousity perhaps. Maybe you 
+want to build something useful, like a control for a local irrigation
+system, or hack an ECU because you're converting to ethanol, or fuck with 
+John Deere because they're assholes ... whatever.
+
+Keep in mind the following: computers are good for two basic things:
+
+1) Crunching/manipulating lots of data really fucking fast
+2) Controlling physical processes
+
+Our focus is microcontrollers, which puts us squarely in the camp of
+item 2 above, and the focus of *this* target directory is the 
+venerable MSP430 family from Texas Instruments.
+
+These damn things are literally everywhere: automotive, aircraft,
+medical, toys ... yeah, so is STM, the 8051 and blah blah blah, but
+ignore them while you're here.  The MSP430 is its own animal, as they
+are theirs.
+
+I'll be using the MSP430FR6989 Launchpad (MSP-EXP430FR6989) as an
+example in this document, but the basic info applies to other members of
+the family.
+
+-----------------------------------------------------------------------
+
+Step 1: Don't panic.
+
+There is lot to unpack here, and if you have no familiarity with
+microcontrollers you are in for a bit of a rollercoaster. 
+
+Know nothing an need a Predator drone overview?  Start here:
+
+https://www.electronicshub.org/microcontrollers-basics-structure-applications/
+
+-----------------------------------------------------------------------
+
+Step 2: RTFM.
+
+A) Datasheet
+B) User Manual
+
+===================
+   The Datasheet
+===================
+
+The first place to start after your overview and any other crawling
+through the jumbled interwebs you decide to pursue to add to your
+confusion is to Read The Datasheet.  Always Read The Datasheet.
+
+You can find datasheets for a particular microcontroller via your
+search engine of choice, but a word of caution: try to find the latest
+current version.  99.99% of the time you should download these directly
+from the manufacturers site.  Be wary of rando pdf's yanked from the
+web.
+
+We (anarchitech.org) try to keep copies of the current relevant docs
+stashed in this repo, but hey man, the beer is free, so ...
+
+At the very least, run any pdf's you grab through
+
+  https://virustotal.com
+
+and if you haven't heard about polyglots you would be wise to educate
+yourself.
+
+For the msp430fr6989, the datasheet may be found locally here:
+
+           mu/target/MSP430/doc/msp430fr6989.pdf
+
+WARNING: TI, like other manufacturers, has their own rather fucked up
+naming convention for their documemtation.  I'm sure it makes sense on
+their end, but as a general rule their document names convey no
+intuitively obvious hint as to which device it's supposed to cover.
+For example, the above doc internally is named
+
+       SLAS789D.pdf
+
+in TI land.  Helpful, right?  We try to rename the docs locally, as long
+as it doesn't cause breakage in inter-doc linking ...  reminder again
+that the beer is free.
+
+The datasheet in this case is 183 pages long, but most of that you can,
+on first read, say to yourself "blah blah blah" when confronted with
+lots of exciting graphs and mundane (but eventually critical!) details.
+
+Read Section 1.
+Briefly take note of sections 2-3.
+Scan Section 4.
+Scroll quickly through Section 5 at this stage lest panic truly set in.
+Read the text bits of Section 6 and scan the tables for familiarity.
+Briefly acquaint yourself with Section 7.
+
+Section 8 as useful information on further documentation, device support
+and tooling if you decide "Fuck this Forth crap."  
+
+
+=====================
+   The User Manual
+=====================
+
+Great, next on your list of light reading is The User Manual.
+
+Locally, that may be found here:
+
+     mu/target/MSP430/doc/slau367o.pdf
+
+Oh, look, a thoroughly obtuse TI name.  Yeah, you were warned.
+
+Now, the User Manual is 1,021 pages long.  Please remain calm. You do
+not need to memorize this damn thing.  You are going to eat the element
+one byte at a time. (Yes I did write byte.  Ho ho.  Ha ha. Hee hee.)
+
+Follow the same pattern you did with the datasheet; familiarize yourself
+with the sections, try to get a sense of what's going on with this
+thing.  Reminder that you can keep one window open with the pdf, and one
+with your browser aimed at your search engine of choice or wikipedia,
+which often is a good reference for this kind of thing. (What the hell
+is an ADC?)
+
+-----------------------------------------------------------------------
+
+Step 3: Connect to the target. 
+
+Reminder: our target for the purposes of this document is the FR6989
+Raunchpad.
+
+Still determined?  Good. Still planning on using muforth?  Peachy.
+
+Ok, read and follow the directions here:
+
+    mu/target/MSP430/HOW-TO/Firmware_Flashing_fr6989.txt
+
+Once you have completed that, unplug your board, replug it, and try the
+following:
+
+    mu/target/MSP430/HOW-TO/Firmware_Flashing_fr6989.txt
+
+Once you have completed that, unplug your board, replug it, and try the
+following (this assumes you cloned the repo as muforth-anarchitech;
+personally when I clone it I name it locally as muap which is a mnemonic
+for muforth-anarchitech-public.)
+
+    cd muap/mu
+    ./muforth -f target/MSP430/load-fr6989.mu4
+    chat
+    flash-image
+    verify
+    lcd-init
+    meow
+
+... and take a peek at the LCD.  
