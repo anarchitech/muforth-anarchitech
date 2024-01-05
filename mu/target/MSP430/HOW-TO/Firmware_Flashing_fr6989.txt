@@ -1,0 +1,133 @@
+====================================================================
+       Flashing The FR989 With muforth Generated Firmware
+====================================================================
+
+There are two cases that require flashing the MPS430FR6989 Launchpad
+with a fresh copy of chat firmware so you can chat with it easily.
+
+1) You have a brand new board and you have wisely chosen muforth which
+is what all the cool kids are using over, say, Code Composer Studio,
+which is the microcontroller equivalent of "Ok, Boomer."
+
+2) Cool kids sometimes break things and you've wedged your board and can
+no longer chat with it.
+
+Before we go further, a couple of caveats:
+
+The only existing documentation for this process (up to this point) is
+in the git log of the main repo and it's outdated AF. Surprise bitches!
+
+The easiest and most painless way for you to do this is to spin up a
+Linux box, and the best box for this is Archlinux, because the AUR
+(Archlinux Users Repository) has a version of MSP430Flasher you can
+build and run as a package and ignore all of the utterly stupid,
+timewasting hoop jumping and speed bumps you have to go through to get
+an "approved" TI copy. Really TI?  Really?  Ok, boomers.
+
+We *don't* recommend mspdebug, and we *don't* recommend building either
+mspdebug or MSP430Flasher from source, and we *don't* recommend using
+anyone's package of either other than Archlinux.  Why? Because they're
+either old, broken, out of date, missing features or all of the above.
+
+Final caveat: You need to put jumpers on the CTS and RTS pins, grab those
+two extra jumpers which are hopefully down by your LCD.
+
+When you plug the board in two devices will pop up on Linux:
+/dev/ttyACM0 and /dev/ttyACM1. Only one of those will work for what we
+want, /dev/ttyACM0.  You may need to change the permissions so you can
+read/write to it: sudo chmod $USER:$USER is your friend here.
+
+IF you are going to try this on OpenBSD, your devices will be /dev/cuaU0
+and /dev/cuaU1 ... but this is one of those rare occasions where I'll
+tell you "just do this with Arch."  That's right, OpenBSD fanbois, I'm
+OS agnostic, and if something works better than my fave rave, I'll use
+it.
+
+I'm not going to tell you how to navigate the AUR and build a package
+from it, look it up.
+
+From the muforth main repo, run the following:
+
+./muforth -d fr6989 -f target/MSP430/load-chat.mu4 gen-ihex bye > \
+    chat-fr6989.hex
+
+Plug the (jumpered) board in, and then:
+
+MSP430Flasher -w chat-fr6989.hex -v -z [VCC]
+
+Sample output of a successful flash:
+
+[dgs@localhost mu]$ MSP430Flasher -w chat-fr6989.hex -v -z [VCC]
+*
+-----/|--------------------------------------------------------------------
+*
+*     / |__
+  *
+*    /_   /   MSP Flasher v1.3.20
+  *
+*      | /
+   *
+*
+-----|/--------------------------------------------------------------------
+*
+*
+* Evaluating triggers...done
+* Checking for available FET debuggers:
+* Found USB FET @ ttyACM0 <- Selected
+* Initializing interface @ ttyACM0...done
+* Checking firmware compatibility:
+* The firmware of your FET is outdated.
+- Would you like to update it? (Y/N): Y
+
+*********************************************************
+*
+*  Initializing Update Bootloader.
+*  Programming new firmware:
+*  |||||||||||||||||||||||||||||||||||||||||||||||||| 100%
+*  Update was successfully finished.
+*
+*********************************************************
+
+*  Exit Update Bootlader and reboot firmware.
+* FET firmware is up to date.
+* Reading FW version...
+* Debugger does not support target voltages other than 3000 mV!
+* Setting VCC to 3000 mV...done
+* Accessing device...done
+* Reading device information...done
+* Loading file into device...done
+* Verifying memory (chat-fr6989.hex)...done
+*
+*
+----------------------------------------------------------------------------
+* Arguments   : -w chat-fr6989.hex -v -z [VCC]
+*
+----------------------------------------------------------------------------
+* Driver      : loaded
+* Dll Version : 31400000
+* FwVersion   : 31200000
+* Interface   : TIUSB
+* HwVersion   : E 4.0
+* JTAG Mode   : AUTO
+* Device      : MSP430FR6989
+* EEM         : Level 5, ClockCntrl 2
+* Erase Mode  : ERASE_ALL
+* Prog.File   : chat-fr6989.hex
+* Verified    : TRUE
+* BSL Unlock  : FALSE
+* InfoA Access: FALSE
+* VCC ON      : 3000 mV
+*
+----------------------------------------------------------------------------
+* Starting target code execution...done
+* Disconnecting from device...done
+*
+*
+----------------------------------------------------------------------------
+* Driver      : closed (No error)
+*
+----------------------------------------------------------------------------
+*/
+
+That's it! Remove the CTS/RTS jumpers, make sure serial-target is aimed
+at the correct device and you're good to go.
