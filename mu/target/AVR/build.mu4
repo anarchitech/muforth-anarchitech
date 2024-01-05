@@ -5,7 +5,7 @@
 ( Load the AVR build environment.)
 
 ( Using STM32 board.)
--- -d via-disco
+-d via-disco
 -- -d via-s08
 
 ld lib/host-prompt.mu4        ( helpful prompt when in host mode)
