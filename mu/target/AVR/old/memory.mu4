@@ -1,6 +1,6 @@
 ( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
 loading AVR memory
 
@@ -39,21 +39,7 @@ ld target/common/memory.mu4   ( generic memory image support)
    make-region eeprom
 
 
-( Using the bootloader space in AVR parts is awkward. Each part has a
-  *maximum* boot space, which we define as #boot in the equates. By setting
-  bootsz to a value betwee 0 and 3 we can make the boot space *smaller* by
-  shifting it right by bootsz. We put bootsz into the fuses to tell the chip
-  how big a boot space we want.
-
-  The trouble is, what if know how much space we need ahead of time? Then
-  we need to calculate bootsz based on #boot and our *desired* boot space
-  size.)
-
 .ifdef #boot
-   .def #boot-desired  .ndef bootsz  .and .if
-      #boot log_2 drop ( exp)  #boot-desired log_2 drop ( exp) -
-      3 min constant bootsz
-   .then
    ( calculate start of boot space)
    #flash  #boot  .ifdef bootsz  bootsz >>  .then  -  constant @boot
 .else
@@ -67,13 +53,6 @@ Setting @boot to the end of flash."
 ( Compatibility shims for existing AVR code.)
 : +a  ( a1 a2 - sum)  +  wrap ;  ( add and wrap to image boundary)
 : image-  ( host - target)  'image -  wrap ;
-
-( Quick hack to generate Intel hex files for flashing via avrdude or
-  similar command-line tools. Using the shell, redirect the output of
-  muforth to a file.)
-
-: ihex-region   region  over image+ -rot  ihwchunks ;
-: gen-ihex   flash ihex-region  boot ihex-region  ihwend ;
 
 
 .ifdef legacy-avr-memory

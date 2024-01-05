@@ -1,11 +1,17 @@
 ( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2012-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( Load file for serial chat example. Shows how to use regions, signatures,
   and vectors.)
 
 ( Define your device before loading this file!)
+
+( We know the chat code is just over 512 bytes long. Let's request a boot
+  space of 1 Ki. The AVR memory code will calculate a proper bootsz based
+  on the chip and our requested size.)
+
+1 Ki constant #boot-desired
 
 ld! target/AVR/build.mu4
 
@@ -15,8 +21,8 @@ ld! target/AVR/build.mu4
 ( For a breadboarded chip, leave the default clock setting; for an Arduino
   with an external resonator/crystal, uncomment the following two lines:)
 
-           0 constant cksel  ( see the datasheet for the options for CKSEL)
- #16,000,000 constant f_clock
+--           0 constant cksel  ( see the datasheet for the options for CKSEL)
+-- #16,000,000 constant f_clock
 
 ld target/AVR/fuses.mu4  ( generate the fuse and lock bytes!)
 

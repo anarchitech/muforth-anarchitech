@@ -1,8 +1,8 @@
 ( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+  Copyright 2012-2023 David Frech. (Read the LICENSE for details.)
 
-( Load file for I2C chat example. Shows how to use regions, signatures,
+( Load file for serial chat example. Shows how to use regions, signatures,
   and vectors.)
 
 ( Define your device before loading this file!)
@@ -15,14 +15,18 @@ ld! target/AVR/build.mu4
 ( For a breadboarded chip, leave the default clock setting; for an Arduino
   with an external resonator/crystal, uncomment the following two lines:)
 
---           0 constant cksel  ( see the datasheet for the options for CKSEL)
--- #16,000,000 constant f_clock
+           0 constant cksel  ( see the datasheet for the options for CKSEL)
+ #16,000,000 constant f_clock
 
 ld target/AVR/fuses.mu4  ( generate the fuse and lock bytes!)
 
+( Put something into eeprom, just to test.)
+eeprom
+," Hello from EEPROM!"
+
 flash
 ( Signature shold be the first thing in the flash.)
-," I2C chat example, tasking, with heartbeat LED, watchdog, and two debounced buttons."
+," UART chat example, tasking, with heartbeat LED, watchdog, and two debounced buttons."
 build-info
 
 ( Tasks and user areas.)
@@ -35,7 +39,7 @@ drop
 boot
 1 vectors allot  ( room for reset vector)
 ld target/AVR/simple-tasker.mu4  ( this *must* directly follow reset vector!)
-ld target/AVR/chat-iic-core.mu4
+ld target/AVR/chat-serial.mu4
 
 flash
 ( Our application is the timer interrupt, heartbeat task, and button tasks.)
