@@ -93,13 +93,13 @@ Read the configure and post-make notes, take heed of the bit about 99-muforth.ru
   * [RISC-V](mu/target/RISC-V) (initially, the SiFive FE310 and
     GigaDevice
     GD32VF103)
+  * [AVR](mu/target/AVR) (Atmel)
+  * [PIC18](mu/target/PIC18) (Microchip)
 
 ## Supported targets (dormant)
 
   * [ARMv5](mu/target/ARM/v5) (originally targeting an ARM AEB-1 board running an ARM7DI processor)
-  * [AVR](mu/target/AVR) (Atmel)
   * [HC08 and HCS08](mu/target/HC08) (Motorola/Freescale/NXP)
-  * [PIC18](mu/target/PIC18) (Microchip)
 
 ## Running
 
