@@ -7,7 +7,7 @@
 
 ( Uncomment for your board.)
 -- ld target/ARM/board/stm32f072b-discovery.mu4
-ld target/ARM/board/stm32f3-discovery.mu4
+-- ld target/ARM/board/stm32f3-discovery.mu4
 
 -d avr  ( Programming Atmel AVR devices via SPI)
 -d i2c
@@ -16,7 +16,7 @@ jtag
 .ifdef testing
    hex
 .else
-   startup kick
+   startup run
    cr ." STM32 firmware is running."
    cr
    bye
