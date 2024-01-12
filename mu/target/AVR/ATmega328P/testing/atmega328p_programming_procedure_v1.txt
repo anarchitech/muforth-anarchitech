@@ -1,3 +1,8 @@
+CAVEAT: This works, but currently ONLY if you use the rollback commit
+shown in the UPDATE section and ELIDE step 4 in the Preliminaries
+section.  This doc is a WIP and provided only for the crew and the
+foolish lurkers who have decided to play along.
+
 ------------ Preliminaries ---------------------------
 
 
@@ -28,7 +33,23 @@ read:
 
      99 : run      ( pc)  copy-ram  tsp @  t.run ;  ( don't wait for target)
     100 : runwait  ( pc)  run  get-regs ;          ( wait for target)
-    
+
+WARNING: Do NOT change kick to run if you are using the actual working
+commit below!      
+
+5) IF you are running OpenBSD and likely one of the other BSD's you'll
+need to change target/ARM/debug/stlink-v2.mu4 line 44 and aim it at
+*your* correct ugen.  On OpenBSD 7.4 -current as of this writing on a
+Thinkpad Carbon X1, that is ugen3:
+
+ 42
+ 43 .ifdef stlink-v2-1
+ 44    z" /dev/ugen3.01" open-file-rw  dup constant stlink-read
+ 45                                        constant stlink-write
+
+OOTB muforth picks ugen0.01 as a default for this.  In an ideal future
+world there will be code that does all this fiddly file tweaking crap
+automagically.  For now, reflect that the beer is free.
 
 ------------ STAGE 1: Setting up the stm32f303 board ------------------
 
@@ -139,13 +160,17 @@ Verifying eeprom ........
 Verifying fuses
 Verifying lock bits  Ok (meta) (hex) (flash)
  3 =>                1e                95                 f
-chat                         <--- Can we chat?
-chat Device not configured   <--- No, we'll have to try w/ pl2303
 
-At this point, it failed to chat w/ the PL2303 trying both fast and slow
-bits.  This is on OpenBSD, haven't tried this on Linux yet.
+----------------- STAGE 3: Chatting via UART ---------------------
 
--------------------- UPDATE -----------------------------
+We chat with the target via the onboard UART on pins 2,3.  Prior to
+hooking this up, you *must* edit target/AVR/build.mu4 and comment out
+line 8 (use two dashes) like this:
+
+  7 ( Using STM32 board.)
+  8 -- -d via-disco
+  9 -- -d via-s08
+-------------------- UPDATE  -----------------------------
 
 Rolling back to commit prior to daf's exciting changes works; able to
 re-flash the chip w/ the rollback code following above procedure and
@@ -194,4 +219,5 @@ bye
 
 λ$ git rev-parse --short HEAD
 b77edd00               <------ rollback to here to get it to work
+
 
