@@ -1,3 +1,14 @@
+-------------------------------------------------------------
+
+01-11-24 UPDATE
+
+IMPORTANT!  Don't try to run this atmo. Needs re-thwacking of
+the target flashing code.
+
+--------------------------------------------------------------
+
+
+
 This is for the Arduino.
 
 1) If you're just banging at the Arduino via the U16/USB tether,
