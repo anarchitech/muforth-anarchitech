@@ -9,7 +9,7 @@ read:
     128 ld target/ARM/stm32/bitbanged-spi-full-duplex.mu4
 
 2) Make sure you uncomment the correct line for your stm in
-   target/ARM/board/stm32f3-discovery.mu4:
+   target/AVR/load-stm32-discovery.mu4:
 
    8 ( Uncomment for your board.)
    9 -- ld target/ARM/board/stm32f072b-discovery.mu4
