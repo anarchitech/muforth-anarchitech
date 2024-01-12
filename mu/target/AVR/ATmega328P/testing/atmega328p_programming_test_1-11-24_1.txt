@@ -1,3 +1,35 @@
+------------ Preliminaries ---------------------------
+
+
+1) Change line 127 of target/ARM/stm32/atmel-spi-programming-core.mu4 to
+read:
+
+    126 ( Default to assembler versions of the bitbanging code.)
+    127 -d slow-bits
+    128 ld target/ARM/stm32/bitbanged-spi-full-duplex.mu4
+
+2) Make sure you uncomment the correct line for your stm in
+   target/ARM/board/stm32f3-discovery.mu4:
+
+   8 ( Uncomment for your board.)
+   9 -- ld target/ARM/board/stm32f072b-discovery.mu4
+   10 ld target/ARM/board/stm32f3-discovery.mu4
+
+
+3) Edit target/AVR/build.mu and aim it at the correct device; yes, some
+   are using an S08 as a programmer.
+
+   7 ( Using STM32 board.)
+   8 -d via-disco    
+   9 -- -d via-s08
+
+4) This is an error on daf's part that he'll be patching, but you need
+   change target/ARM/v6-m/interact.mu4 line 100 from 'kick' to 'run':
+
+     99 : run      ( pc)  copy-ram  tsp @  t.run ;  ( don't wait for target)
+    100 : runwait  ( pc)  run  get-regs ;          ( wait for target)
+    
+
 ------------ STAGE 1: Setting up the stm32f303 board ------------------
 
 ./muforth -d stlink-v2-1 -d spi-prog -f target/AVR/load-stm32-discovery.mu4
