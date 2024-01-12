@@ -144,3 +144,54 @@ chat Device not configured   <--- No, we'll have to try w/ pl2303
 
 At this point, it failed to chat w/ the PL2303 trying both fast and slow
 bits.  This is on OpenBSD, haven't tried this on Linux yet.
+
+-------------------- UPDATE -----------------------------
+
+Rolling back to commit prior to daf's exciting changes works; able to
+re-flash the chip w/ the rollback code following above procedure and
+then successfully chat via PL2303:
+
+$ ./muforth -f target/AVR/load-chat-serial.mu4
+
+muforth/64 (b77edd00) 2024-jan-11 20:35 (https://muforth.dev/)
+Copyright (c) 2002-2024 David Frech (read the LICENSE for details)
+
+Type 'settings' to see a few of muforth's tweakable behaviours.
+
+(( AVR meta-compiler (chains) ))
+(( AVR device support: atmega328 ))
+(( Intel hex file support (reading and writing) ))
+(( AVR memory ))
+(( AVR assembler ))
+(( AVR disassembler .r again.  Rd again.  Rs again.  K8 again.  ))
+(( AVR meta-compiler (main) ))
+(( AVR interaction .r again.  hi again.  du again.  ))
+(( AVR programming over SPI ))
+(( AVR flash programming
+(( Core flash programming )) ))
+(( Serial expect/send ))
+(( AVR serial chat (host) ))
+(( AVR fuse byte generator Fuse bytes: ff d4 e2  Lock byte: ef ))
+(( AVR tasks (simple) ))
+(( AVR serial (uart) chat (core)
+(( AVR EEPROM reading and writing ))
+(( AVR flash self-programming support )) ))
+(( AVR heartbeat (software PWM) ))
+(( AVR debounced buttons example ))
+chat
+Chat firmware version b77edd00
+ITHS_VNZC     T     X     Y     Z    SP    PC
+0000_0010  08f9  0018  08fc  0001  08ee  7dc2   Ok (meta) (hex) (flash)
+verify 2 42 f4 f6 f8 118 11a 11c 11e 120 122 124 126 128 12a 12c 12e 130
+132 134 136 138 13a 13c 13e 140 142 144 146 148 14a 14c 14e 150 152 154
+156 158 15a 15c 15e 160 162 164 166 168 16a 16c 16e 170 172 174 176 178
+17a 17c 17e 180 182 184 186 188 18a 18c 18e 190 192 194 196 198 19a 19c
+19e 1a0 1a2 1a4 1a6 1a8 1aa 1ac 1ae 1b0 1b2 1b4 1b6 1b8 1ba 1bc 1be 1c0
+1c2 1c4 1c6 1c8 1ca 1cc 1ce 1d0 1d2 1d4 1d6 1d8 1da 1dc 1de 1e0 1e2 1e4
+1e6 1e8 1ea 1ec 1ee 1f0 1f2 1f4 1f6 1f8 1fa 1fc 1fe 200 202 204 206 208
+20a 20c 20e 210 212 214 216 218  Ok (meta) (hex) (flash)
+bye 
+
+λ$ git rev-parse --short HEAD
+b77edd00               <------ rollback to here to get it to work
+
