@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.dev/
+( This file is part of muforth: https://muforth.nimblemachines.com/
 
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
 ( This is for non-Forth code that simply needs to switch stack pointers
   between two or more independent tasks. Each task has its own stack and a
@@ -17,9 +17,7 @@ loading AVR tasks (simple)
   byte in the user area, and task switching is very fast: a single byte load!
 
   The first byte of the user area is the status flag; the second byte is
-  the "pointer" to the next task. The third is the saved SPL, and the
-  fourth is currently unused. [It used to be SPH, until I realized that it
-  was unnecessary.]
+  "pointer" to the next task. The next two bytes are the saved sp.
 
   A status byte that is <0 means runnable; >=0 means stopped. Doing it this
   way makes it easy to use the status field as a counting semaphore.)
@@ -47,7 +45,7 @@ hook create-task-hook
 
 label yield
    u y movw  ( get user pointer into y)
-   SPL g0 in  2 g0 stu  ( get current SPL and save it into user area)
+   w sp@  2 w stuw  ( get current sp and save it into user area)
 
    ( We have to find a task to run. It's possible that an interrupt could
      wake a sleeping task, so we just try and try until something is ready.
@@ -59,25 +57,12 @@ label yield
       1 yl ldu  ( follow pointer to next task)
       0 g0 ldu  ( load task's status byte)
    g0 tst  0< until
-   ( Found a live one; fall thru to run it.)  ;c
+   ( Found a live one; fall through to run it.)  ;c
 
 label run-task
    y u movw  ( set user pointer from y)
-   2 g0 ldu  SPL g0 out  ( restore SPL from user area)
+   2 w lduw  w sp!  ( restore sp from user area)
    ret  ( run!)  ;c
-
-( Enter with:
-  h1:h0 = initial pc
-     h2 = prev user area low byte pointer
-      y = current user area
-  Exit with:
-     h2 = current user area low byte pointer
-)
-hooks create-task-hook
-label create-task
-    1 h2 stu   ( pointer to prev task)
-   yl h2 mov   ( prev task = this task)
-   ( fall thru)  ;c
 
 ( Enter with:
   h1:h0 = initial pc
@@ -90,9 +75,22 @@ label init-task
    y x movw                ( x is our temp sp)
    -x h0 st  -x h1 st      ( push pc: big endian!)
    1 x sbiw                ( empty descending fixup)
-   2 xl stu                ( save temp SPL to user area)
+   2 x stuw                ( save temp sp to user area)
    "ff h0 ldi  0 h0 stu    ( set initial status: runnable)
    ret  ;c
+
+( Enter with:
+  h1:h0 = initial pc
+     h2 = prev user area low byte pointer
+      y = current user area
+  Exit with:
+     h2 = current user area low byte pointer
+)
+hooks create-task-hook
+label create-task
+    1 h2 stu   ( pointer to prev task)
+   yl h2 mov   ( prev task = this task)
+   init-task rjmp  ;c
 
 comment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
