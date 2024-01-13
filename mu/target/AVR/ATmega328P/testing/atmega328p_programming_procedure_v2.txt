@@ -1,0 +1,215 @@
+UPDATE: 01-12-24
+
+The main repo AVR/ code is now working correctly, albeit without an
+exciting register display but that will come.  We've incorporated all
+the patches so we're in sync with main in this directory.  The code has
+been tested, both for programming using an STM32F303-Discovery board and
+for chatting w/ the target via a PL2303 connected to UART (pins 2,3)
+
+Follow the steps below and you should get there.
+
+NB: Your Chat Firmware Version numbers WILL NOT match what's shown
+below!  
+
+------------ Preliminaries ---------------------------
+
+
+1) Change line 127 of target/ARM/stm32/atmel-spi-programming-core.mu4 to
+read:
+
+    126 ( Default to assembler versions of the bitbanging code.)
+    127 -d slow-bits
+    128 ld target/ARM/stm32/bitbanged-spi-full-duplex.mu4
+
+2) Make sure you uncomment the correct line for your stm in
+   target/AVR/load-stm32-discovery.mu4:
+
+   8 ( Uncomment for your board.)
+   9 -- ld target/ARM/board/stm32f072b-discovery.mu4
+   10 ld target/ARM/board/stm32f3-discovery.mu4
+
+
+3) Edit target/AVR/build.mu and aim it at the correct device; yes, some
+   are using an S08 as a programmer.
+
+   7 ( Using STM32 board.)
+   8 -d via-disco    
+   9 -- -d via-s08
+
+
+4) IF you are running OpenBSD and likely one of the other BSD's you'll
+need to change target/ARM/debug/stlink-v2.mu4 line 44 and aim it at
+*your* correct ugen.  On OpenBSD 7.4 -current as of this writing on a
+Thinkpad Carbon X1, that is ugen3:
+
+ 42
+ 43 .ifdef stlink-v2-1
+ 44    z" /dev/ugen3.01" open-file-rw  dup constant stlink-read
+ 45                                        constant stlink-write
+
+OOTB muforth picks ugen0.01 as a default for this.  In an ideal future
+world there will be code that does all this fiddly file tweaking crap
+automagically.  For now, reflect that the beer is free.
+
+------------ STAGE 1: Setting up the stm32f303 board ------------------
+
+./muforth -d stlink-v2-1 -d spi-prog -f target/AVR/load-stm32-discovery.mu4
+
+muforth/64 (2a1b5c33) 2024-jan-05 07:07 (https://muforth.dev/)
+Copyright (c) 2002-2024 David Frech (read the LICENSE for details)
+
+Type 'settings' to see a few of muforth's tweakable behaviours.
+
+(( STM32F3 Discovery board
+(( STM32F303xC chip
+(( STM32F303xC equates ))
+(( ARM Cortex-M4 processor
+(( ARM Cortex-M core equates (v6-M and v7-M) ))
+(( Core target compiler (chains and token consumers) ))
+(( ARM v6-M memory image ))
+(( Reading Motorola S-record (S19) files ))
+(( Intel hex file support (reading and writing) h* again.  hh* again.
+))
+(( UF2 file format ))
+(( ARM v6-M Thumb2 disassembler ))
+(( ARM v7-M Thumb2 disassembler L@ again.  ))
+(( ARM v6-M Thumb2 assembler 4# again.  00r again.  i8 again.  sh-imm
+again.  ))
+(( ARM v7-M Thumb2 assembler ))
+(( ARM Cortex-M3/M4 bit banding support ))
+(( ARM v6-M meta-compiler (main) ; again.  ))
+(( ARM v6-M interaction dumps again.  ))
+(( Core flash programming )) )) )) stlink-v2-1 again.
+(( ST-LINK debug Yes we have bananas h* again.
+(( STM32 flash programming code )) )) ))
+(( Atmel SPI flash programming (STM32 core)
+(( ARM v6-M Forth kernel (ITC) regs>mask again.  dpop2 again.  dpop3
+again.  rpush2 again.  rpop2 again.  ))
+(( STM32 Bitbanged SPI (full-duplex) )) ))
+ST-LINK/V2-1 JTAG v37
+Mass mode => Debug mode
+      IX        SP        RP        IP
+00000000  20001050  00000000  00000000*
+STM32 firmware is running.
+
+DO NOT UNPLUG THE BOARD!
+
+-------- STAGE 2: Programming ------------------------
+
+$ ./muforth -d stlink-v2-1 -d spi-prog -f target/AVR/load-chat-serial.mu4
+
+muforth/64 (2a1b5c33) 2024-jan-05 07:07 (https://muforth.dev/)
+Copyright (c) 2002-2024 David Frech (read the LICENSE for details)
+
+Type 'settings' to see a few of muforth's tweakable behaviours.
+
+(( AVR meta-compiler (chains) ))
+(( AVR device support: atmega328 ))
+(( Intel hex file support (reading and writing) ))
+(( AVR memory ))
+(( AVR assembler ))
+(( AVR disassembler .r again.  Rd again.  Rs again.  K8 again.  ))
+(( AVR meta-compiler (main) ))
+(( AVR interaction .r again.  copy-ram again.  hi again.  du again.  ))
+(( ST-LINK debug Yes we have bananas h* again.  ))
+(( Atmel SPI flash programming (host) spy again.  ))
+(( AVR I2C chat (host) via STM32 >b again.  >w again.  b> again.  w>
+again.  cmd again.  ))
+(( AVR programming over SPI ))
+(( Serial expect/send spy again.  ))
+(( AVR serial chat (host) >b again.  b> again.  >w again.  w> again.  ))
+(( AVR fuse byte generator Fuse bytes: ff d6 e2  Lock byte: ef ))
+(( AVR tasks (simple) ))
+(( AVR serial (uart) chat (core)
+(( AVR EEPROM reading and writing ))
+(( AVR flash self-programming support )) ))
+(( AVR heartbeat (software PWM) ))
+(( AVR debounced buttons example ))
++prog read-sig -prog
+ST-LINK/V2-1 JTAG v37
+Debug mode  Ok (meta) (hex) (flash)
+ 3 =>                1e                95                 f
+prog
+Warning: You should commit your changes *before* programming the flash
+if you want the signature to reference the correct commits!
+
+ST-LINK/V2-1 JTAG v37
+Debug mode
+Writing fuses
+ST-LINK/V2-1 JTAG v37
+Debug mode
+Writing flash (application)
+   page 0
+   page 80
+   page 100
+   page 180
+   page 200
+Writing flash (bootloader)
+   page 7e00
+   page 7e80
+   page 7f00
+   page 7f80
+Writing eeprom...................
+Writing lock bits Ok (meta) (hex) (flash)
+ 3 =>                1e                95                 f
+verify
+ST-LINK/V2-1 JTAG v37
+Debug mode
+Verifying flash
+................................................................................................................................................................................................................................................................
+Verifying eeprom ........
+Verifying fuses
+Verifying lock bits  Ok (meta) (hex) (flash)
+ 3 =>                1e                95                 f
+
+----------------- STAGE 3: Chatting via UART ---------------------
+
+We chat with the target via the onboard UART on pins 2,3.  Prior to
+hooking this up, you *must* edit target/AVR/build.mu4 and comment out
+line 8 (use two dashes) like this:
+
+  7 ( Using STM32 board.)
+  8 -- -d via-disco
+  9 -- -d via-s08
+
+$ ./muforth -f target/AVR/load-chat-serial.mu4
+
+muforth/64 (b77edd00) 2024-jan-11 20:35 (https://muforth.dev/)
+Copyright (c) 2002-2024 David Frech (read the LICENSE for details)
+
+Type 'settings' to see a few of muforth's tweakable behaviours.
+
+(( AVR meta-compiler (chains) ))
+(( AVR device support: atmega328 ))
+(( Intel hex file support (reading and writing) ))
+(( AVR memory ))
+(( AVR assembler ))
+(( AVR disassembler .r again.  Rd again.  Rs again.  K8 again.  ))
+(( AVR meta-compiler (main) ))
+(( AVR interaction .r again.  hi again.  du again.  ))
+(( AVR programming over SPI ))
+(( AVR flash programming
+(( Core flash programming )) ))
+(( Serial expect/send ))
+(( AVR serial chat (host) ))
+(( AVR fuse byte generator Fuse bytes: ff d4 e2  Lock byte: ef ))
+(( AVR tasks (simple) ))
+(( AVR serial (uart) chat (core)
+(( AVR EEPROM reading and writing ))
+(( AVR flash self-programming support )) ))
+(( AVR heartbeat (software PWM) ))
+(( AVR debounced buttons example ))
+chat
+Chat firmware version b77edd00
+ITHS_VNZC     T     X     Y     Z    SP    PC
+0000_0010  08f9  0018  08fc  0001  08ee  7dc2   Ok (meta) (hex) (flash)
+verify 2 42 f4 f6 f8 118 11a 11c 11e 120 122 124 126 128 12a 12c 12e 130
+132 134 136 138 13a 13c 13e 140 142 144 146 148 14a 14c 14e 150 152 154
+156 158 15a 15c 15e 160 162 164 166 168 16a 16c 16e 170 172 174 176 178
+17a 17c 17e 180 182 184 186 188 18a 18c 18e 190 192 194 196 198 19a 19c
+19e 1a0 1a2 1a4 1a6 1a8 1aa 1ac 1ae 1b0 1b2 1b4 1b6 1b8 1ba 1bc 1be 1c0
+1c2 1c4 1c6 1c8 1ca 1cc 1ce 1d0 1d2 1d4 1d6 1d8 1da 1dc 1de 1e0 1e2 1e4
+1e6 1e8 1ea 1ec 1ee 1f0 1f2 1f4 1f6 1f8 1fa 1fc 1fe 200 202 204 206 208
+20a 20c 20e 210 212 214 216 218  Ok (meta) (hex) (flash)
+bye 
+

@@ -41,7 +41,7 @@ hex
 )
 
 .ifdef stlink-v2-1
-   z" /dev/ugen0.01" open-file-rw  dup constant stlink-read
+   z" /dev/ugen3.01" open-file-rw  dup constant stlink-read
                                        constant stlink-write
 .else
    z" /dev/ugen0.01" open-file-ro  constant stlink-read
