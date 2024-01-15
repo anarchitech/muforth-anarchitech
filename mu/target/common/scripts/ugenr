@@ -1,0 +1,12 @@
+#!/bin/sh
+# ugenme = change ownership of ugenX device back to root, which is the
+# OpenBSD default. Run ugenme so you can access the device as a humble
+# user.  xconsole gets a bad rap by some, but I like to run it down in
+# one corner of my desktop; when I'm testing/hacking I tend to be
+# popping a lot of devices in and out of the ports and it's a quick
+# visual reference. 
+set -euf
+printf "Enter number of ugenX for device: "
+read -r NUM
+doas chown root /dev/ugen"$NUM".01
+ls -la /dev/ugen"$NUM".01

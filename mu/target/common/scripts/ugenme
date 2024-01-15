@@ -1,0 +1,9 @@
+#!/bin/sh
+# ugenme = change ownership of ugenX device so you can use the damn
+# thing.  This is for OpenBSD only.  Run ugenr to change ownership back
+# to root.  
+set -euf
+printf "Enter number of ugenX for device: "
+read -r NUM
+doas chown $USER /dev/ugen"$NUM".01
+ls -la /dev/ugen"$NUM".01
