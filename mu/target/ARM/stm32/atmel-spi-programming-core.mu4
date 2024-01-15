@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading Atmel SPI flash programming (STM32 core)
 
@@ -124,7 +124,7 @@ variable p
 : rst\  ( assert /RST)      [ 1 7 << #] bit\ ;
 
 ( Default to assembler versions of the bitbanging code.)
--d slow-bits
+-d fast-bits
 ld target/ARM/stm32/bitbanged-spi-full-duplex.mu4
 
 ( Send and receive a full 32 bits.)
@@ -357,10 +357,6 @@ compiler: :]  ( end a jump table)
 -- ------------------------------------------------------------------------
 -- Core command processing loop
 -- ------------------------------------------------------------------------
-( XXX forget about changing clock speed for now.)
-: fast-clock ;
-: slow-clock ;
-
 ( Command index is above the word that it executes.)
 : do-command  ( n)
            ( 10    11       12           13 )
@@ -555,7 +551,8 @@ cpuclk ( clks/s)  #1,000,000 ( us/s) /  ( => clks/us)
 : read-fuses
    50 00_00 0 avr3
    58 08_00 0 avr3
-   50 08_00 0 avr3 ;
+   50 08_00 0 avr3  ( fuse hfuse efuse)
+   lohi>  lohi> ;
 
 : read-lock
    58 0 0 avr3 ;
