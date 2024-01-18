@@ -14,4 +14,7 @@ For OpenBSD 7.4 -current there appears to be a fly in the ointment;
 the BB1 no longer enumerates as serial device accessible via /dev/cuaUx, 
 but instead is enumerating strictly as a uhid device.
 
+Note that this applies to accessing the device via usb; UART chatting is
+still available via P.4/.5 (tx,rx)
+
 Somebody will dig into this RSN.
