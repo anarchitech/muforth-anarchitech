@@ -8,5 +8,7 @@
 set -euf
 printf "Enter number of ugenX for device: "
 read -r NUM
+doas chown root /dev/ugen"$NUM".00
 doas chown root /dev/ugen"$NUM".01
+ls -la /dev/ugen"$NUM".00
 ls -la /dev/ugen"$NUM".01
