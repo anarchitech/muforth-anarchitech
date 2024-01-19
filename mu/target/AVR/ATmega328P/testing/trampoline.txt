@@ -1,0 +1,48 @@
+#################################################
+Fri Jan 19 15:44:37 PST 2024
+OpenBSD 7.4
+GENERIC.MP#1611
+dgs@cthulhu
+#################################################
+
+commit 6928fcc0289b618b8b7164111656f7b78016e8bf fixed everything and
+*now* we're at a useful spot.  *Now* you can reprogram the target using
+the v4 procedure and start serial chatting.
+
+Example test:
+
+$ ./muforth -f target/AVR/load-chat-serial.mu4
+...
+(( AVR register context trampoline ))
+(( AVR register context example code ))
+chat
+Chat firmware version 9fcce851
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  0000  0000  0000  7f00  0000   Ok (meta) (hex) (flash)
+xx1
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  0000  0000  0000  c0de  022a   Ok (meta) (hex) (flash)
+xx2
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  0000  0000  0000  d0d0  023c   Ok (meta) (hex) (flash)
+xx3
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  0000  0000  0000  beef  0246   Ok (meta) (hex) (flash)
+7fc w!  Ok (meta) (hex) (flash)
+@ rx
+ITHS_VNZC  H1     W     X     Z    SP    PC
+1000_0000  00  cafe  0000  07fe  07f4  01fc   Ok (meta) (hex) (flash)
+
+In the example session above we run three pieces of test code: xx1, xx2
+and xx3.  Set the git log message for the commit above; SP is now the Z
+register ... and yes it's ok that it doesn't match Z in the register
+output above because of how it's being used.  READ THAT COMMIT MESSAGE!
+
+Note the SP and PC values after each execution.  You can find the code
+for xx1 etc in target/AVR/register-trampoline.mu4
+
+Our final "proof" test is to write the address 7fc to the w register and
+fetch the result ... we're asking "what's at this address?" ... but we
+already know: it *should* return the value 0xcafe and in fact it *does*.
+
+Commence poking around. ;)
