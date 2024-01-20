@@ -1,11 +1,11 @@
 #!/bin/sh
-# ugenme = change ownership of ugenX device so you can use the damn
-# thing.  This is for OpenBSD only.  Run ugenr to change ownership back
-# to root.  
 set -euf
 printf "Enter number of ugenX for device: "
-read -r NUM
+read -r NUM 
+printf "Enter name of your muforth directory: "
+read -r MU
 doas chown $USER /dev/ugen"$NUM".00
 doas chown $USER /dev/ugen"$NUM".01
 ls -la /dev/ugen"$NUM".00
 ls -la /dev/ugen"$NUM".01
+sed -i -r "s/ugen.\.01\" open-file-rw/ugen$NUM\.01\" open-file-rw/" ~/"$MU"/mu/target/ARM/debug/stlink-v2.mu4
