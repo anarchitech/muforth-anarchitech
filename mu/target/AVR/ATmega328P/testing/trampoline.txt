@@ -45,4 +45,89 @@ Our final "proof" test is to write the address 7fc to the w register and
 fetch the result ... we're asking "what's at this address?" ... but we
 already know: it *should* return the value 0xcafe and in fact it *does*.
 
-Commence poking around. ;)
+---------------------------------------------------------------------
+
+Next, let's check out one of the examples in
+target/AVR/register-examples.mu4. Scroll down to lines 22-23:
+
+      ( Add w + x, store in w)
+      label +     xl wl add  xh wh adc  ret  ;c
+  
+Let's test it (breaking up the output, comments inline):
+
+
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  0000  0000  0000  7f00  0000   Ok (meta) (hex) (flash)
+
+
+We'll utilize 7fc (address) but let's decrement it first by a random
+value; we'll plug those values into W and X:
+
+
+7fc 2ed -  Ok (meta) (hex) (flash)
+ 1 =>               50f  <-- result of decrementing by 0x2ed; RPN!
+
+
+w!  Ok (meta) (hex) (flash) <-- store that value in w
+2ed x!  Ok (meta) (hex) (flash) <-- store 0x2ed in x
+
+
+.regs <--- examine the registers, yep there they are:
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  050f  02ed  0000  7f00  0000   Ok (meta) (hex) (flash)
+
+
++ rx  <--- w + x and we get a register display immediately.  Note w.
+ITHS_VNZC  H1     W     X     Z    SP    PC
+1000_0000  00  07fc  02ed  0000  07f4  01fc   Ok (meta) (hex) (flash)
+
+
+@ rx <--- fetch the value stored at the address in w
+ITHS_VNZC  H1     W     X     Z    SP    PC
+1000_0000  00  cafe  02ed  07fe  07f4  01fc   Ok (meta) (hex) (flash)
+
+
+w@  Ok (meta) (hex) (flash) <--- grab that value out of w store on the
+                                 stack
+ 1 =>              cafe
+
+
+.regs <--- run regs, note that the address remains in w; w@ is 
+           non-destructive.
+
+
+ITHS_VNZC  H1     W     X     Z    SP    PC
+1000_0000  00  cafe  02ed  07fe  07f4  01fc   Ok (meta) (hex) (flash)
+ 1 =>              cafe
+
+-------------------------------------------------------------------
+
+Here's what the uncommented session output would actually look like:
+
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  0000  0000  0000  7f00  0000   Ok (meta) (hex) (flash)
+7fc 2ed -  Ok (meta) (hex) (flash)
+ 1 =>               50f
+w!  Ok (meta) (hex) (flash)
+2ed x!  Ok (meta) (hex) (flash)
+.regs
+ITHS_VNZC  H1     W     X     Z    SP    PC
+0000_0000  00  050f  02ed  0000  7f00  0000   Ok (meta) (hex) (flash)
++ rx
+ITHS_VNZC  H1     W     X     Z    SP    PC
+1000_0000  00  07fc  02ed  0000  07f4  01fc   Ok (meta) (hex) (flash)
+@ rx
+ITHS_VNZC  H1     W     X     Z    SP    PC
+1000_0000  00  cafe  02ed  07fe  07f4  01fc   Ok (meta) (hex) (flash)
+w@  Ok (meta) (hex) (flash)
+ 1 =>              cafe
+.regs
+ITHS_VNZC  H1     W     X     Z    SP    PC
+1000_0000  00  cafe  02ed  07fe  07f4  01fc   Ok (meta) (hex) (flash)
+ 1 =>              cafe
+
+The output is cumulative, and it's admittedly terse, as it only contains
+exactly what you need.  The important thing to remember is that the
+current state of the host->target chat session is always at the bottom
+of the output. The registers aren't *always* displayed after you execute
+a forth word, but you can always see them with .regs
