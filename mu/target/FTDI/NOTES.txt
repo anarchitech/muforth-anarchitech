@@ -1,0 +1,29 @@
+Sat Jan 20 19:26:50 UTC 2024
+
+OpenBSD: FTDI is in a pretty dodgy state on OpenBSD.  Yes, libftdi1 is
+available, yes, ftdi devices will enumerate, no, there is no guarantee
+you will be able to successfully use them consistently as we've
+discovered during a recent bout of testing.
+
+Linux: FTDI devices so far, in fact the same FTDI devices which
+universally failed during OpenBSD testing, worked OOTB.
+
+It just depends on what you're doing with the device.  Serial chat with
+a target and muforth? Fine on both OpenBSD and Linux.  Dump the
+signature off an atmeg328p using a Tigard + the canonical harness with
+avrdude? Linux: fine.  OpenBSD: good luck with that.
+
+There's even "a trick" that you can use, one of my personal faves: lie
+to the machine. And it sometimes works, depending on software/hardware
+combo aimed at the ftdi device:
+
+1) Unplug ftdi device and reboot
+2) At 
+        boot>
+   type
+        boot> boot -c
+        UKC> disable ufdi
+        UKC> quit
+3) After it boots, plug in the device and note that it likely enumerates
+as a /dev/ugenX device.  Cool. Try aiming at that.  Joy? Great, have at
+it.  No joy?  This is why you have a Linux box. ;)
