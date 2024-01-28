@@ -9,14 +9,46 @@ commit 6928fcc0289b618b8b7164111656f7b78016e8bf fixed everything and
 *now* we're at a useful spot.  *Now* you can reprogram the target using
 the v4 procedure and start serial chatting.
 
+UPDATE!: You'll need to reflash the target if you run -d testing!
+Reflashing section added 01-28-24.
+
 Example test:
 
-$ ./muforth -f target/AVR/load-chat-serial.mu4
+$ ./muforth -d testing -f target/AVR/load-chat-serial.mu4
 ...
 (( AVR register context trampoline ))
 (( AVR register context example code ))
 chat
-Chat firmware version 9fcce851
+Chat firmware version 34c6ed23
+verify 2 42 bc be c0 c2 c4 e4 e8 108 10a 10c 10e 110 112 114 116 118 11a
+11c 11e 120 122 124 126 128 12a 12c 12e 130 132 134 136 138 13a 13c 13e
+142 144 146 148 14a 14c 14e 150 152 154 156 158 15a 15c 160 166 168 16a
+16c 16e 170 172 174 176 178 17a 17c 17e 180 182 184 186 188 18a 18c 18e
+192 194 196 198 19a 19c 19e 1a0 1a2 1a4 1a6 1a8 1aa 1ac 1ae 1b0 1b2 1b4
+1b6 1b8 1ba 1bc 1be 1c0 1c2 1c4 1c6 1c8 1ca 1cc 1ce 1d0 1d2 1d4 1d6 1d8
+1da 1dc 1de 1e0 1e2 1e4 1e6 1e8 1ea 1ec 1ee 1f0 1f2 1f4 1f6 1f8 1fa 1fc
+1fe 200 202 204 206 208 20a 20c 20e 210 212 214 216 218 21a 21c 21e 220
+222 224 226 228 22a 22c 22e 230 232 234 236 23a 23c 23e 240 242 244 246
+248 24a 24c 24e 250 252 254 256 258 25a 25e 260 262 266 268 26a 26c 26e
+270 272 274 276 278 27a 27c 27e 280 282 284 286 288 28a 28c 28e 290 292
+294 296 298 29a 29c 29e 2a0 2a2 2a4 2a6 2a8 2aa 2ac 2ae 2b0 2b2 2b4  Ok
+(meta) (hex) (flash)
+flash-image
+   erase   0
+   program 0 80
+   erase   80
+   program 80 80
+   erase   100
+   program 100 80
+   erase   180
+   program 180 80
+   erase   200
+   program 200 80
+   erase   280
+   program 280 36  Ok (meta) (hex) (flash)
+verify  Ok (meta) (hex) (flash)
+chat
+Chat firmware version 34c6ed23
 ITHS_VNZC  H1     W     X     Z    SP    PC
 0000_0000  00  0000  0000  0000  7f00  0000   Ok (meta) (hex) (flash)
 xx1
