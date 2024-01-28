@@ -6,6 +6,10 @@ printf "Enter name of your muforth directory: "
 read -r MU
 doas chown $USER /dev/ugen"$NUM".00
 doas chown $USER /dev/ugen"$NUM".01
+doas chown $USER /dev/ugen"$NUM".02
 ls -la /dev/ugen"$NUM".00
 ls -la /dev/ugen"$NUM".01
+ls -la /dev/ugen"$NUM".02
 sed -i -r "s/ugen.\.01\" open-file-rw/ugen$NUM\.01\" open-file-rw/" ~/"$MU"/mu/target/ARM/debug/stlink-v2.mu4
+sed -i -r "s/ugen.\.01\" open-file-ro/ugen$NUM\.01\" open-file-ro/" ~/"$MU"/mu/target/ARM/debug/stlink-v2.mu4
+sed -i -r "s/ugen.\.02\" open-file-wo/ugen$NUM\.02\" open-file-wo/" ~/"$MU"/mu/target/ARM/debug/stlink-v2.mu4
