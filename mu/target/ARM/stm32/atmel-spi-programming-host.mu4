@@ -1,6 +1,6 @@
 ( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading Atmel SPI flash programming (host)
 
@@ -91,7 +91,7 @@ variable spy  ( to spy on the protocol)
    2pop ;
 
 ( The existing AVR code needs the following commands defined:)
-: avr.Hello  st.connect ;
+: avr.Hello ;
 : avr.Bye  ;  ( XXX is there anything to do here?)
 
 : avr.ResetHigh  spi.reset-high ;
