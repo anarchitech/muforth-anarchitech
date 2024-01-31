@@ -40,11 +40,11 @@ hex
 )
 
 .ifdef stlink-v2-1
-   z" /dev/ugen0.01" open-file-rw  dup constant stlink-read
+   z" /dev/ugen3.01" open-file-rw  dup constant stlink-read
                                        constant stlink-write
 .else
-   z" /dev/ugen0.01" open-file-ro  constant stlink-read
-   z" /dev/ugen0.02" open-file-wo  constant stlink-write
+   z" /dev/ugen3.01" open-file-ro  constant stlink-read
+   z" /dev/ugen3.02" open-file-wo  constant stlink-write
 .then
 
 : uread   ( buf len - #read)  stlink-read   usb-read ;
@@ -250,5 +250,10 @@ defer doit  ( buf target len)
    dup  1 = if  drop  >swd  get-mode  then
         2 = if  ^  then  ( debug mode)
    error" Couldn't put ST-LINK into debug mode." ;
+
+( Let's connect and put it into Debug mode. This way subsequent code
+  doesn't have to worry about it.)
+
+st.connect-quietly
 
 .then  ( def stlink)
