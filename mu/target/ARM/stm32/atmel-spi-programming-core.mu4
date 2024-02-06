@@ -138,7 +138,6 @@ variable p
 : rst\  ( assert /RST)      [ 1 7 << #] bit\ ;
 
 ( Default to assembler versions of the bitbanging code.)
--d fast-bits
 ld target/ARM/stm32/bitbanged-spi-full-duplex.mu4
 
 ( Send and receive a full 32 bits.)
@@ -392,16 +391,17 @@ here ]  ( chip-init)
 ( Startup code! Since we have a Forth kernel, let's write the startup code
   in Forth!)
 
-.ifndef in-ram
-   Reset_exc handler
-.then
-
 label startup
-   -- Startup code!
-   -- Since we have a Forth kernel, let's write the startup code in Forth!
-   ( Ignore the sp we were passed. Set rp to top of ram, sp below.)
-   @ram #ram + rp lit   rp sp mov   #64 cells # sp sp sub
+.ifdef in-ram
    cpsid  ( disable interrupts)
+   ( Ignore the sp we were passed. Set rp and sp to end of RAM.)
+   @ram #ram + rp lit   rp sp mov
+.else
+   Reset_exc handler
+   ( Use SP from reset vector. It should point to the end of RAM.)
+   sp rp mov
+.then
+   #64 cells sp sp sub  ( RP at end of RAM; SP below)
    ( chip-init)  ip  lit
    deca_fbad     top lit
    next  ;c
@@ -416,7 +416,7 @@ NMI_exc handler
 default-handler
    lr bx  ;c  ( return to sender!!)
 
-.then
+.then  ( not in-ram)
 
 
 ( XXX The following is for interactive testing and needs to go away

@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading Serial chat code - in Forth! (target)
 
@@ -149,7 +149,7 @@ ld target/ARM/v6-m/kernel-itc.mu4
 ( XXX hardwiring in the address of data stack bottom!)
 code depth
    @ram #ram +  #32 cells -  w lit  ( bottom of data stack)
-   sp x mov   x w w subs   2 # w w lsrs
+   sp x mov   x w w subs   2 w w lsrs
    top dpush1   w top mov   next  ;c
 
 : wait   for next ;
@@ -202,9 +202,8 @@ here 1+ ( thumb!)  fake-reset cell+ !
 
 Reset_exc handler
    -- Startup code!
-   -- Reset will have set our SP from vector 0000.
    -- Since we have a Forth kernel, let's write the startup code in Forth!
-   sp rp mov   #64 cells # sp sp sub  ( RP at end of RAM; SP below)
+   sp rp mov   #64 cells sp sp sub  ( RP at end of RAM; SP below)
    ' chat cell+  ip  lit
    0decafbad     top lit
    next  ;c

@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 : rom   token drop  c@+ c@  lohi> ;
 
@@ -9,12 +9,12 @@ hex
 
 ( Remember: w is r0 and x is r1.)
 code func  ( two-char-code - addr)
-   14 # z movs    ( rom address of table of pointers)
-   0 z +) w ldrh  ( pointer to function table)
-   4 z +) z ldrh  ( pointer to lookup function)
-   top x mov      ( two-char-code)
-   z blx          ( call lookup function)
-   w top mov      ( result into top)
+   14 z movs   ( rom address of table of pointers)
+   0 z w ldrh  ( pointer to function table)
+   4 z z ldrh  ( pointer to lookup function)
+   top x mov   ( two-char-code)
+   z blx       ( call lookup function)
+   w top mov   ( result into top)
    next  ;c
 
 
