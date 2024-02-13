@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( Load build environment for v6-M device.)
 
@@ -26,8 +26,7 @@ ld target/ARM/v6-m/interact.mu4  ( chatty debug)
    0 vector-table ram-vectors
 .then
 
-ld target/ARM/v6-m/flash.mu4     ( settings for flashing/verifying)
-ld target/common/flash.mu4       ( programming the flash)
+ld target/ARM/v6-m/flash.mu4     ( programming and verifying the flash)
 
 .ifdef bootloader
    h @  ram  @ram #bl-ram +  dup region!  h !

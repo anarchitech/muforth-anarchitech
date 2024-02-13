@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading PIC18 disassembler
 
@@ -27,6 +27,11 @@ compiler
 : multi  ( - src)  compile (match)  \ if        ;  ( doesn't print op)
 forth
 
+: label?  ( addr - 0 | 'link -1)  .labels.  find-constant ;
+: sfr?    ( addr - 0 | 'link -1)  .equates. find-constant ;
+
+: .name   ( 'link)  link>name type ;
+
 ( Sign-extend 16-bit word to host number)
 : sext  ( w - n)   dup 8000 and if -1_0000 + then ;
 
@@ -35,25 +40,29 @@ forth
 : .hex    radix preserve  hex       (.) type ;
 : .h12    radix preserve  hex  <#  # # #  #> type ;
 
-: .h12_   .h12 space ;
+( Set and print the current bank address.)
+: .bank   ( op - op)  dup [ #bsr-bits ones #] and  8 <<
+   dup current-bank !  .hex ;
 
-: .bank  dup 0f and  8 <<  dup current-bank !  .hex ;
+( Print a data address. Should really be .hex or .h16.)
+: .da     dup sfr? if  nip .name ^  then  .hex ;
 
 : .imm6   ( op - op)  dup  03f and  .h8 ;
 : .imm8   ( op - op)  dup  0ff and  .h8 ;
 : .nop    ( op - op)  dup 0fff and  .h12 ;
 
-: .zoff   ( zoff)          07f and  .h8  ."  ,z" ;
+: .zoff   ( zoff)          07f and  .hex  ."  ,z" ;
 
-( Convert f8 to access ram address or stack offset and print it.)
-: .access  ( f8)
-   5f over u< if  0f00 +  .h12  ^  then
-   xinst @ if  .zoff  ^  then  .h12 ;
+: .access-ram  .ifdef xinst  .zoff  .else  @ram +  .da  .then ;
+: .access-io   [ \eq STATUS >bank #] +  .da ;
+
+( Print f8 as "access bank" address.)
+: .access  ( f8)  dup 60 u< if  .access-ram ^  then  .access-io ;
 
 ( Print a guess of the address, based on current bank setting)
 ( XXX Use slashes /addr/ to suggest "banked"?)
 : .banked  ( f8)
-   current-bank @  +  ." /" .h12 ." /" ;
+   current-bank @  +  ." /" .da  ." /" ;
 
 : .af  dup >f8  over 100 and if  .banked  ^ then  .access ;
 : .d   dup 200 and 0= if  ." w " then ;
@@ -72,7 +81,7 @@ forth
 
 : .bitop   dup  9 >>  7 and  ( bit#)  u.  .af ;
 
-: .movff   dup .h12_  cell* .h12 ;
+: .movff   dup .h12 space  cell* .h12 ;
 
 ( Extended instructions; "s" is 7 bit offset from fsr2, aka z)
 : .movsf   dup .zoff  cell* .h12 ;
@@ -83,7 +92,8 @@ forth
            over pop mask and  ( op unsigned-bits sign-bit)  -  2* ;
 
 ( XXX .haddr might print too many digits!)
-: .dest  ( op #bits - op)  >offset  p @ +  .haddr ;
+: .dest  ( op #bits - op)
+   >offset  p @ +  dup ea !  dup label? if  nip .name ^  then  .haddr ;
 
 : .rjmp   #11 .dest ;
 
@@ -96,8 +106,11 @@ forth
 ( NOTE: shred hasn't printed the opcode; we have to do that.)
 : .cond  ( op - op)   .jop  8 .dest ;
 
-: .ljmp  ( op - op)   dup 0ff and  ( low)  cell* 0fff and  8 << +  2*  .haddr ;
-: .ldix  ( op - op)   dup 0f and  ( high)  8 <<  cell* 0ff and  +  .h12 ;
+: .ljmp  ( op - op)   dup 0ff and  ( low)  cell* 0fff and  8 << +  2*  .dest ;
+
+: .ldix  ( op - op)
+   dup 0f and  ( high)  [ #bsr-bits 4 + #] <<
+   cell* [ #bsr-bits 4 + ones #] and  +  .da ;
 
 : shred  ( op - op)
 ( All the instructions!)
@@ -128,7 +141,7 @@ forth
 
 ..      00ff exact reset
 
-.. fff0 0100 match bank   .bank
+.. ff00 0100 match bank   .bank
 
 ..      0200 afop  mul
 ..      0400 dafop dec
@@ -165,7 +178,7 @@ forth
 ..      4800 dafop incsnz
 ..      4c00 dafop decsnz
 
-..      5000 afop ldw
+..      5000 afop ld
 ..      5200 afop tst
 
 ..      5400 dafop rsbb
@@ -180,7 +193,7 @@ forth
 ..      6800 afop set
 ..      6a00 afop clr
 ..      6c00 afop neg
-..      6e00 afop stw
+..      6e00 afop st
 
 .. f000 7000 match btog     .bitop
 .. f000 8000 match bset     .bitop
@@ -195,22 +208,10 @@ forth
 
 .. f800 e000 multi          .cond
 
-   ( e800 - e8ff are _extended instructions_)
-
-.. ff00 ec00 match call     .ljmp
-.. ff00 ed00 match call.s   .ljmp
-
-.. fff0 ee00 match ldx   .ldix
-.. fff0 ee10 match ldy   .ldix
-.. fff0 ee20 match ldz   .ldix
-
-.. ff00 ef00 match jmp   .ljmp
-
-.. f000 f000 match nop   .nop    ( this is an extension word; show its contents)
-
 -- --------------------------------------------------------------------------
 -- Extended instructions: e800 to ebff, plus 0014 (callw)
 -- --------------------------------------------------------------------------
+.ifdef xinst
 
 ..      0014 exact callw
 
@@ -229,6 +230,22 @@ forth
 .. ff80 eb00 match movsf   .movsf
 .. ff80 eb80 match movss   .movss
 
+.then  ( ifdef xinst)
+-- --------------------------------------------------------------------------
+-- End of extended instructions
+-- --------------------------------------------------------------------------
+
+.. ff00 ec00 match call     .ljmp
+.. ff00 ed00 match call.s   .ljmp
+
+.. fff0 ee00 match ldx   .ldix
+.. fff0 ee10 match ldy   .ldix
+.. fff0 ee20 match ldz   .ldix
+
+.. ff00 ef00 match jmp   .ljmp
+
+.. f000 f000 match nop   .nop    ( this is an extension word; show its contents)
+
 .. ." *unimplemented*"
 
 ( That's all folks!)
@@ -240,6 +257,10 @@ forth
 
 ( The workhorse.)
 : 1dis  ( a)
+   dup label? if
+      over _addr .nesting space  ." label " .name
+   then
    dup .addr  .nesting space
+   dup ea !  ( jump to self)
    p !  cell*  ( op)  dup .hcell_  space
    shred  drop ;

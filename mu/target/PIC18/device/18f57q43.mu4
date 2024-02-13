@@ -2,12 +2,16 @@
 
 decimal
 
-131072 constant #flash
-8192 constant #ram
+128 Ki constant #flash
+
 "0500 constant @ram
-"380000 constant @eeprom
-1024 constant #eeprom
--d bsr-has-6-bits
+ 8 Ki constant #ram
+
+   64 constant #user-id
+   18 constant #config
+ 1 Ki constant #eeprom
+
+6 constant #bsr-bits
 
 ( Vector table)
   0 vector SWINT_IRQ      | Software Interrupt
@@ -118,6 +122,7 @@ decimal
 122 vector CRC_IRQ        | CRC Interrupt
 123 vector TMR6_IRQ       | Timer6 Interrupt
 124 vector LAST_IRQ       | dummy LAST vector to mark end of vector table
+
 hex
 
 ( SFRs)

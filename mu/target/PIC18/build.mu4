@@ -1,15 +1,13 @@
 ( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( Load the PIC18 build environment.)
-
-( Use the STM32 Discovery board as a programming pod.)
--d via-disco
 
 ld target/common/serial.mu4      ( needed for chat and serial bootloader)
 ld lib/host-prompt.mu4           ( helpful prompt when in host mode)
 
+ld target/common/equates.mu4     ( common definitions needed for chip equates)
 ld target/PIC18/device/supported.mu4
 
 ld target/common/chains.mu4      ( common metacompiler chains and token consumers)
@@ -19,24 +17,28 @@ ld target/PIC18/disasm.mu4
 ld target/PIC18/meta.mu4         ( metacompiler, baby!)
 ld target/PIC18/interact.mu4     ( interaction with target)
 
-( NOTE: For now assuming serial target!)
-.ifdef via-s08
-   ld target/S08/firmware-map.mu4
-   ld target/S08/chat-host.mu4
-   ld target/S08/pic18prog-serial-host.mu4
-.then
-
-.ifdef via-disco
-   -d pic18f-q
-   ld target/ARM/stm32/picprog-host.mu4
-.then
-
 .def 14K50 .def 13K50 .or .if
+   ( For now, this will only work with a connected S08 programmer.)
+   -d via-s08
+   ( NOTE: For now assuming serial target!)
+   .ifdef via-s08
+      ld target/S08/firmware-map.mu4
+      ld target/S08/chat-host.mu4
+      ld target/S08/pic18prog-serial-host.mu4
+   .then
    ld target/PIC18/pic18prog.mu4
-   ld target/PIC18/chat-serial-host.mu4
+.else  ( For now, this means PIC18-Q.)
+   ( We currently can only program these via STM32 Discovery board.)
+   ld target/ARM/debug/stlink-v2.mu4
+   .ifdef stlink
+      -d pic18f-q
+      ld target/PIC18/prog-via-spi.mu4    ( flash programming over SPI)
+   .then
 .else
-   ( For now, this means PIC18-Q.)
 .then
+
+ld target/PIC18/flash.mu4                 ( flash programming over chat)
+ld target/PIC18/chat-serial-host.mu4
 
 ( These settings will stick around if we're loaded with ld!)
 __meta

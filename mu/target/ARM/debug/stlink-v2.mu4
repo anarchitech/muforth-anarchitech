@@ -40,11 +40,11 @@ hex
 )
 
 .ifdef stlink-v2-1
-   z" /dev/ugen3.01" open-file-rw  dup constant stlink-read
+   z" /dev/ugen0.01" open-file-rw  dup constant stlink-read
                                        constant stlink-write
 .else
-   z" /dev/ugen3.01" open-file-ro  constant stlink-read
-   z" /dev/ugen3.02" open-file-wo  constant stlink-write
+   z" /dev/ugen0.01" open-file-ro  constant stlink-read
+   z" /dev/ugen0.02" open-file-wo  constant stlink-write
 .then
 
 : uread   ( buf len - #read)  stlink-read   usb-read ;
@@ -145,7 +145,7 @@ variable spy
 : >swd    0a3 20 0f2 cmd3 ;
 : swd>        21     dbg ;
 
-: check   b*  80 - if  ." fault returned"  then ;
+: check   b*  80 - if  error" fault returned. Executing 'jtag' again might help."  then ;
 : dbg.core-state
            01 dbg  b* ;
 : dbg.halt     02 dbg  check ;
