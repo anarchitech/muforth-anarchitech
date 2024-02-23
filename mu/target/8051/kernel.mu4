@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+( This file is part of muforth: https://muforth.dev/
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( These are more noodlings than anything "serious" at this point.
 
@@ -49,7 +49,7 @@ assembler
    asm{  @r1 a mov  r1 inc  a \f swap mov
          @r1 a mov  r1 inc  a \f swap mov } ;
 
-( op1 computes to low byte; op2 the high byte. For logical operations these
+( op1 computes the low byte; op2 the high byte. For logical operations these
   will be the same.)
 
 : binop  ( op2 op1)
