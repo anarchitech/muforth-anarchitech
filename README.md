@@ -7,6 +7,54 @@ This is an active [fork of the original repository](https://github.com/nimblemac
 
 ---
 
+# PSA
+
+Since there's been an increase in interest/inquiries over the last
+several months, we feel obligated to issue the following Public Service
+Announcement for those of you with more curiousity than good sense.
+
+UNLESS you REALLY have a need for what muforth offers, OR you truly enjoy
+the poignancy of a cherished pain, or what's more likely you're just a 
+garden variety hobbyist (absolutely cool, btw, stay curious) who thinks 
+they have found The Next Cool Thing, we highly recommend focusing on 
+learning C and the assembler for your target(s) of choice, and for an IDE 
+use Keil's μVision. There is a plethora of documentation, libraries and 
+online tutorials/courses to get you bootstrapped into embedded programming
+starting from that base of fine materials.
+
+Yes, Keil μVision.  The others are largely crap, and Keil has been doing
+a much better job than any of them in terms of making their community
+version more accessible and less restrictive.  OOTB, it "just works."
+It's used professionally as well, so just in case you're getting a wild
+hair and thinking you'd like to get into this for a Real Job In The Real
+World, you might as well train on an IDE used by The Real World.
+
+Please, for the love of all that at least tries to be sane, think
+carefully about this and how you invest your time:  If you were a client
+who hired an embedded systems programmer, would you want to spend your
+limited funds on a cowboy using a custom tool that was in a constant
+state of flux with no community and extremely limited or non-existent
+support, or would you want someone who develped code using an industry
+standard language/dev environment with extensive community and
+professional support?  Would you want to be "that person" who made a
+critical business decision that relied on "key personnel," aka "a single
+point of failure," or would you rather avoid the ensuing hot mess of a
+drama when it all goes sideways?
+
+muforth is a very cool project, but at the end of the day, the reality
+is that it is used by very, very few people, most of whom (ahem) have
+zero bandwidth for providing assistance.
+
+Yes, some of us are using it professionally, but everyone involved in
+those exciting escapades know exactly what they're doing and have
+extremely good reasons for using it.  This is not, has not been, and
+most likely never will be a "user friendly" project.  "But wtf are you 
+putting it on github?"  We're fiendish trolls.  Suck it up cupcake.
+
+Don't use muforth.
+
+---
+
 ### UPDATE 04 Jan 2024
 
 This came up recently on the [original repo](https://github.com/nimblemachines/muforth.git) so we might as well make this clear here:
