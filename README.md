@@ -34,7 +34,7 @@ carefully about this and how you invest your time:  If you were a client
 who hired an embedded systems programmer, would you want to spend your
 limited funds on a cowboy using a custom tool that was in a constant
 state of flux with no community and extremely limited or non-existent
-support, or would you want someone who develped code using an industry
+support, or would you want someone who developed code using an industry
 standard language/dev environment with extensive community and
 professional support?  Would you want to be "that person" who made a
 critical business decision that relied on "key personnel," aka "a single
@@ -46,7 +46,7 @@ is that it is used by very, very few people, most of whom (ahem) have
 zero bandwidth for providing assistance.
 
 Yes, some of us are using it professionally, but everyone involved in
-those exciting escapades know exactly what they're doing and have
+those exciting escapades knows exactly what they're doing and have
 extremely good reasons for using it.  This is not, has not been, and
 most likely never will be a "user friendly" project.  "But wtf are you 
 putting it on github?"  We're fiendish trolls.  Suck it up cupcake.
