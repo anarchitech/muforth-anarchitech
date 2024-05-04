@@ -5,6 +5,7 @@
 ( Load build environment for v6-M device.)
 
 : [v7]  \f -- ;  ( ignore v7-M-only equates)
+ld target/ARM/v6-m/equates.mu4
 ld target/ARM/v6-m/core-equates.mu4
 
 ld lib/host-prompt.mu4           ( helpful prompt when in host mode)
