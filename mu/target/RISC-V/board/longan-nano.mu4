@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading Sipeed Longan Nano board
 
@@ -9,10 +9,10 @@ ld! target/RISC-V/gigadevice/gd32vf103cbt6.mu4
 ld target/common/serial.mu4
 
 .ifdef bootloader
-   h @  ram  @ram #bl-ram +  dup region!  h !
+   h @  ram  @ram #bl-ram +  region!  h !
    ld target/ARM/debug/stm32-bootloader.mu4
-   -- DFU is DEPRECATED until I can get it working.
-   -- ld target/ARM/debug/stm32-dfu.mu4
+   | DFU is DEPRECATED until I can get it working.
+   | ld target/ARM/debug/stm32-dfu.mu4
 .then
 
 ld target/RISC-V/chat-host.mu4

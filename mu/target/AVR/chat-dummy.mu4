@@ -1,11 +1,11 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading AVR chat (dummy implementation)
 
-( NOTE: All the following d.foobar commands are the dummy _implementations_
-  of the chat command interface.)
+| NOTE: All the following d.foobar commands are the dummy _implementations_
+| of the chat command interface.
 
 ( We need dummy images of all the memory spaces.)
 
@@ -21,9 +21,9 @@ loading AVR chat (dummy implementation)
 #eeprom make-image
    make-region dummy-eeprom
 
--- ------------------------------------------------------------------------
--- Chat implementation
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Chat implementation
+| ------------------------------------------------------------------------
 : dx.get-version  "d0d0_dada ;
 
 variable dummy-z
@@ -32,7 +32,7 @@ variable dummy-z
 
 here  ]  dummy-flash  dummy-ram  dummy-eeprom  [
 : dx.setup-chunk  ( buf a u space - u buf dummy)
-   h preserve  addrs [ #] + addr@ execute  ( set dummy region)
+   h preserve  cells [ #] + @execute  ( set dummy region)
    -rot  image+ ;
 
 : dx.read   ( buf a u space)
@@ -47,9 +47,9 @@ here  ]  dummy-flash  dummy-ram  dummy-eeprom  [
    dummy-ram     erase-image
    dummy-eeprom  erase-image ;
 
--- ------------------------------------------------------------------------
--- Chat interface
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Chat interface
+| ------------------------------------------------------------------------
 
 : d.hello  ( - #chunk)
    cr ." Chat (dummy) firmware version "  dx.get-version
@@ -65,8 +65,8 @@ here  ]  dummy-flash  dummy-ram  dummy-eeprom  [
 : d.write-data     ( buf a u)   1 dx.write ;
 : d.write-eeprom   ( buf a u)   2 dx.write ;
 
-( NOTE: We are *provisionally* removing app-start and app-stop from the
-  chat-via array, and *deprecating* their use in interact.mu4.)
+| NOTE: We are *provisionally* removing app-start and app-stop from the
+| chat-via array, and *deprecating* their use in interact.mu4.
 
 : chat   chat-via
    d.hello  dx.get-status  d.run  dx.read  d.write-data  d.write-eeprom

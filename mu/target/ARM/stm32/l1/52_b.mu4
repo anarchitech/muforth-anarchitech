@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading STM32L152xB chip
 
@@ -15,11 +15,11 @@ loading STM32L152xB chip
 
       2 Ki constant #bl-ram  ( ram consumed by bootloader)
 
-( XXX Not sure if this the right page size. The documentation is very
-  confusing on this subject.)
+| XXX Not sure if this the right page size. The documentation is very
+| confusing on this subject.
 
        256 constant /page  ( erase page size)
 
 ld! target/ARM/processor/cortex-m3.mu4
 
--- load peripheral equates etc
+| load peripheral equates etc

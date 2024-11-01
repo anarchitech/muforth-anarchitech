@@ -8,6 +8,12 @@ sed -E \
 	$1 > $1.sedded
 exit
 
+# change homepage link to muforth.dev
+sed -E \
+	-f scripts/homepage.sed \
+	$1 > $1.sedded
+exit
+
 # delete trailing whitespace
 sed -E \
 	-f scripts/whitespace.sed \
@@ -17,12 +23,6 @@ exit
 # change target/HC08/ to target/S08/
 sed -E \
 	-f scripts/target-hc08.sed \
-	$1 > $1.sedded
-exit
-
-# change homepage link to https
-sed -E \
-	-f scripts/homepage.sed \
 	$1 > $1.sedded
 exit
 

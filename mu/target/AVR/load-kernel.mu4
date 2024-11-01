@@ -1,11 +1,11 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ld! target/AVR/build.mu4
 
 flash
 ld target/AVR/chat-iic-core.mu4
 
--- "200 org
+| "200 org
 ld target/AVR/kernel.mu4  ( beginnings of an AVR Forth kernel!)

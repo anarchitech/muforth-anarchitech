@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( Make a module for AEB-1.)
 
@@ -40,15 +40,15 @@ here constant bug  ( debug module)
 
 ( now fix up all the forward references)
 
-( We're going to build the title and help strings. Since the help string is
-  a concat of strings, including the date, we're going to build it r-to-l,
-  using our own pad.)
+| We're going to build the title and help strings. Since the help string is
+| a concat of strings, including the date, we're going to build it r-to-l,
+| using our own pad.
 
 'pad @ ( save the old)
 ram 128 + 'pad ! ( ours)
 
-comment help-string
-          ,"                 v.vv (dd mmm yyyy)"   help-string
+| comment help-string
+|           ,"                 v.vv (dd mmm yyyy)"   help-string
 
 ( help)
 <# char ) hold  clock date <date>  char ( hold  ||  version count "hold
@@ -56,21 +56,21 @@ comment help-string
 ( title)  ," muforth/ARM"                                      swap |+ !
 ( ro_limit)  here  bug -  swap  |+ +!
 
-( Note: the AEB-1 bootloader _seems_ to have a bug; it _seems_ to calculate
-  the checksum over [base, limit+4], so we add a cell as well.)
+| Note: the AEB-1 bootloader _seems_ to have a bug; it _seems_ to calculate
+| the checksum over (base, limit+4), so we add a cell as well.
 
 : checksum  ( from to - n)
    0 -rot cell+  over -  ?for  @+ push  xor  pop  next  then  drop ;
 
 ( checksum)  bug |+  here |+  checksum  swap  |+ !
 
-comment %%later
-
-here
-code do-nothing
-  lr pc mov  c;
-
-%%later
+| comment %%later
+|
+| here
+| code do-nothing
+|   lr pc mov  c;
+|
+| %%later
 
 0 .if
 ( Create the uuencoded file for this module)

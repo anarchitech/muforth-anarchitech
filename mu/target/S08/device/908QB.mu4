@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( Equates for the 908QB4/8.)
 
@@ -9,10 +9,10 @@ hex
 0fe00 #flash - constant @flash   ( calculate flash origin)
 
 ( Ports)
-00 equ PortA    -- port A data
-01 equ PortB    -- port B data
-04 equ DirA     -- port A direction; 0 = in, 1 = out
-05 equ DirB     -- port B direction
+00 equ PortA    | port A data
+01 equ PortB    | port B data
+04 equ DirA     | port A direction; 0 = in, 1 = out
+05 equ DirB     | port B direction
 
 ( SCI registers)
 10 equ SCC1  ( control 1)

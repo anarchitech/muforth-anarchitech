@@ -1,35 +1,35 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading Hitachi HD44780 display (STM32F0 support)
 
 __meta
 hex
 
-( Interface connections. We're using the 4-bit interface, and if we treat
-  the display as write-only - it's a 5v device and we are talking to it
-  with a 3v microcontroller - we only need E and RS in addition.
-
-  Let's use Port C. Here is how to connect it to the LCD:
-
-  Port  LCD  Pin*
-  ====  ===  ===
-  PC12   D7   14
-  PC11   D6   13
-  PC10   D5   12
-  PC9    D4   11
-
-  PC8    E     6
-         R/nW  5    tie low
-  PC7    RS    4
-
-         Vo    3    contrast; tying to Gnd often works
-         5v    2    since we are not reading from LCD, this is ok
-        Gnd    1
-
-  *LCD pin numbers assume 14-pin, 2x7 connector. I'm not sure how the
-  single-row inline connectors are pinned out.)
+| Interface connections. We're using the 4-bit interface, and if we treat
+| the display as write-only - it's a 5v device and we are talking to it
+| with a 3v microcontroller - we only need E and RS in addition.
+|
+| Let's use Port C. Here is how to connect it to the LCD:
+|
+| Port  LCD  Pin*
+| ====  ===  ===
+| PC12   D7   14
+| PC11   D6   13
+| PC10   D5   12
+| PC9    D4   11
+|
+| PC8    E     6
+|        R/nW  5    tie low
+| PC7    RS    4
+|
+|        Vo    3    contrast; tying to Gnd often works
+|        5v    2    since we are not reading from LCD, this is ok
+|       Gnd    1
+|
+| *LCD pin numbers assume 14-pin, 2x7 connector. I'm not sure how the
+| single-row inline connectors are pinned out.
 
 
 { h @ } flash
@@ -43,33 +43,33 @@ flash-vectors
 ld target/ARM/v6-m/kernel-itc.mu4
 
 
-( Interface timing.
-
-  Let's try using delays so we don't have to read from the LCD. This way we
-  can tie R/nW low, and not worry about 3v versus 5v issues.
-
-  We want to calculate a loop count from a delay time in us. We can do
-  48,000,000/4 loops per second, or 48,000,000/4,000,000 loops per us. To get
-  from us to loops, multiply by 12.
-
-  XXX When running from Flash, it seems like it takes almost twice as long.
-  Do I want to multiply by 6 for Flash versions?)
+| Interface timing.
+|
+| Let's try using delays so we don't have to read from the LCD. This way we
+| can tie R/nW low, and not worry about 3v versus 5v issues.
+|
+| We want to calculate a loop count from a delay time in us. We can do
+| 48,000,000/4 loops per second, or 48,000,000/4,000,000 loops per us. To get
+| from us to loops, multiply by 12.
+|
+| XXX When running from Flash, it seems like it takes almost twice as long.
+| Do I want to multiply by 6 for Flash versions?
 
 meta: microsec  ( us - counts)  #12 * ;  ( ram)
--- meta: microsec  ( us - counts)  8 * ;  ( flash)
+| meta: microsec  ( us - counts)  8 * ;  ( flash)
 
 meta: delay   ( counts)  constant
    ;code  0 w w ldr   begin   1 w w subs   0= until   next  ;c
 
 
-( Delay 100us after every normal command. The HD44780U datasheet says it
-  takes about 37us after each command, but my old LCD - an Hitachi LM-018L
-  from 1997 - could be much slower.)
+| Delay 100us after every normal command. The HD44780U datasheet says it
+| takes about 37us after each command, but my old LCD - an Hitachi LM-018L
+| from 1997 - could be much slower.
 
   #100 microsec  delay 100us
 
-( Delay 5ms after a long command - Home or Clear. Again, the datasheet
-  specifies a much shorter time - 1.5ms - but let's be conservative.)
+| Delay 5ms after a long command - Home or Clear. Again, the datasheet
+| specifies a much shorter time - 1.5ms - but let's be conservative.
 
 #5,000 microsec  delay 5ms
 #15,000 microsec  delay 15ms
@@ -88,9 +88,9 @@ meta: delay   ( counts)  constant
 : RS/  [ 1 7 << #] GPIOC_BSRR ! ;
 : RS\  [ 1 7 << #] GPIOC_BRR ! ;
 
-( Shift the high nybble up to bits 12 to 15. Complement it and shift those
-  bits up to 28 to 31. This way we can set and clear all the bits in one
-  operation.)
+| Shift the high nybble up to bits 12 to 15. Complement it and shift those
+| bits up to 28 to 31. This way we can set and clear all the bits in one
+| operation.
 
 : data!  ( byte)
    5 <<  1e00 and  ( set bits)
@@ -109,13 +109,13 @@ meta: delay   ( counts)  constant
 
 ld target/common/hd44780.mu4  ( basic "driver" code)
 
-( There is room in the HD44780 character generator RAM [CGRAM] for 8 custom
-  5x8 characters, or 4 custom 5x10 characters.
-
-  The character numbers - essentially the "ASCII" values - are 0 to 7 for
-  the 5x8 characters, or 0, 2, 4, or 6 for the 5x10 characters.
-
-  The CGRAM address is the character number times 8.)
+| There is room in the HD44780 character generator RAM (CGRAM) for 8 custom
+| 5x8 characters, or 4 custom 5x10 characters.
+|
+| The character numbers - essentially the "ASCII" values - are 0 to 7 for
+| the 5x8 characters, or 0, 2, 4, or 6 for the 5x10 characters.
+|
+| The CGRAM address is the character number times 8.
 
 ( Load the *entire* CGRAM - 64 bytes' worth.)
 ( 'code must have the stack effect ( 'code n i - 'code n' x)
@@ -362,15 +362,15 @@ __meta
 
 ( Startup code.)
 
-( Even though the documentation gives conflicting messages - the schematic
-  says that it's connected, but the user manual says that it isn't - it
-  seems that the 8 MHz clock from the ST-LINK is *not* in fact routed to the
-  OSC_IN pin on the F072.
-
-  Instead, the F072 has a 48 MHz HSI - high speed internal - clock that can
-  synchronize with the frame fields from USB, so it can be used as a
-  crystal-less clock source, even for USB applications. We will use this as
-  our system clock.)
+| Even though the documentation gives conflicting messages - the schematic
+| says that it's connected, but the user manual says that it isn't - it
+| seems that the 8 MHz clock from the ST-LINK is *not* in fact routed to the
+| OSC_IN pin on the F072.
+|
+| Instead, the F072 has a 48 MHz HSI - high speed internal - clock that can
+| synchronize with the frame fields from USB, so it can be used as a
+| crystal-less clock source, even for USB applications. We will use this as
+| our system clock.
 
 : wait-for-rdy  ( regaddr)
    begin  dup c@  2 and  until  ( wait for RDY bit)  drop ;
@@ -382,10 +382,10 @@ __meta
    begin  dup c@ %1111 =  until  ( SW=HSI48 and SWS=HSI48)  drop ;
 
 : ports-init
-   -- Turn on clock to Port C
+   | Turn on clock to Port C
    ( Ports -FED_CBA- )
         [ %0000_1000  #16 << #] RCC_AHBENR set!
-   -- Make PC6 to PC9 outputs
+   | Make PC6 to PC9 outputs
    [ %01010101 #12 << #] GPIOC_MODER set! ;
 
 : wait   for next ;
@@ -396,8 +396,8 @@ here ]  ( chip-init)
    clock-init  ports-init  flash-leds  demo  [
 
 Reset_exc handler
-   -- Startup code!
-   -- Since we have a Forth kernel, let's write the startup code in Forth!
+   | Startup code!
+   | Since we have a Forth kernel, let's write the startup code in Forth!
    sp rp mov   #64 cells sp sp sub  ( RP at end of RAM; SP below)
    ( chip-init)  ip  lit
    "decafbad     top lit

@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading ARM v6-M Thumb2 disassembler
 
@@ -8,19 +8,19 @@ loading ARM v6-M Thumb2 disassembler
 
 hex
 
-( Words to compile the instruction table.
-  match and exact do masked and exact matches - resp - against the opcode
-  on the stack.
-
-  If a match is found, the cfa following match is executed, and then the
-  word that called match is exited, with a -1 on the stack! This shortcuts
-  any further tests.
-
-  If no match was found, the following cfa is skipped, and the matching
-  continues apace.)
+| Words to compile the instruction table.
+| match and exact do masked and exact matches - resp - against the opcode
+| on the stack.
+|
+| If a match is found, the cfa following match is executed, and then the
+| word that called match is exited, with a -1 on the stack! This shortcuts
+| any further tests.
+|
+| If no match was found, the following cfa is skipped, and the matching
+| continues apace.
 
 : matched  ( op f - op -1 | op)
-   shunt  pop  swap  if  addr@ execute  -1  ^  then  addr+ push ;
+   shunt  pop  swap  if  @execute  -1  ^  then  cell+ push ;
 
 ( mask op and test against match)
 : match   ( op mask match - op -1 | op)  push  over and  pop =  matched ;
@@ -49,8 +49,8 @@ variable instr-pc  ( points to _start_ of current instruction)
 : .udec  radix preserve  decimal  (u.) type ;
 : .hex   radix preserve  hex       (.) type ;
 
-( #op takes an index, a string of ops, and a "width", and leaves a string
-  on the stack, *including* the trailing whitespace.)
+| #op takes an index, a string of ops, and a "width", and leaves a string
+| on the stack, *including* the trailing whitespace.
 
 : #op  ( index z" width - a u)  push  swap r@ *  +  pop ;
 
@@ -71,21 +71,21 @@ defer .reg  ( reg)
 : .u32  radix preserve hex  <# 4#  char _ hold  4# #> type ;
 
 
-( We would like to print "significant" addresses - like equates - in a
-  symbolic way, both here in the disassembler and in the decompiler.)
+| We would like to print "significant" addresses - like equates - in a
+| symbolic way, both here in the disassembler and in the decompiler.
 
 : .target  ( 'link)  link>name type ;
 : .equate  ( 'link offset)  swap .target  ?if  ."  + " .udec  then ;
 
-( Let's be smart about equates. Most equates are multiples of four. If we
-  are using a byte or halfword offset, we won't match the equate. We need
-  to match the aligned value and then print the difference, if any. But some
-  equates are *not* multiples of four; for these we want to look for an exact
-  match.
-
-  Let's try to match equates *twice*: the first time we look for an exact
-  match; the second time for a four-byte-aligned match, which we will print
-  with an offset, if any.)
+| Let's be smart about equates. Most equates are multiples of four. If we
+| are using a byte or halfword offset, we won't match the equate. We need
+| to match the aligned value and then print the difference, if any. But some
+| equates are *not* multiples of four; for these we want to look for an exact
+| match.
+|
+| Let's try to match equates *twice*: the first time we look for an exact
+| match; the second time for a four-byte-aligned match, which we will print
+| with an offset, if any.
 
 : equate?  ( a - 'link offset -1 | 0)
    ( First, look for an exact match.)
@@ -134,8 +134,8 @@ defer .reg  ( reg)
 ( _op3 assumes each string takes 3 bytes; adds no following whitespace)
 : _op3  ( index z")  3 #op type ;
 
-( XXX this only sorta works. Later, with IT blocks, we'll have to check if
-  we're inside one, and elide the S then.)
+| XXX this only sorta works. Later, with IT blocks, we'll have to check if
+| we're inside one, and elide the S then.
 : .sbit  ( S)  if  char s emit ^  then  space ;
 
 : .op3?s  ( S index z")  _op3  .sbit  3 spaces ;
@@ -147,8 +147,8 @@ defer .reg  ( reg)
 
 : .addsub  ( op S 0/1 - op)   z" addsub" .op3?s ;
 
-( Shift amounts of 0 - except for lsl #0, which has already been matched as
-  a mov - should print as 32.)
+| Shift amounts of 0 - except for lsl #0, which has already been matched as
+| a mov - should print as 32.
 
 ( Shift amount of zero really represents a shift of 32.)
 : sh-imm   ( amount)  dup 0=  #32 and  +  imm ;
@@ -160,21 +160,21 @@ defer .reg  ( reg)
 : .add-r3   1 ( S)  over 9 bit@  .addsub  .r3 ;
 : .add-i3   1 ( S)  over 9 bit@  .addsub  Rd,  Rn,  dup 6 u>>  7 and  imm ;
 
-( An annoying exception: cmp i8 should _not_ sport a trailing 's'. This is
-  the ARM standard; whether it really makes sense is another thing entirely.)
+| An annoying exception: cmp i8 should _not_ sport a trailing 's'. This is
+| the ARM standard; whether it really makes sense is another thing entirely.
 
-( Another exception: We want to show the add/sub as 3 operand instructions,
-  for consistency.)
+| Another exception: We want to show the add/sub as 3 operand instructions,
+| for consistency.
 
 : .ri8   Rd8,  i8 imm ;
 : .add-i8   1 ( S)  over #11 bit@  .addsub   Rd8,  .ri8 ;
 : .mov-i8   0  z" mov"      .op3s  .ri8 ;
 : .cmp-i8      ." cmp    "         .ri8 ;
 
-( Another annoying exception: like cmp i8, tst, cmp, and cmn reg-reg ops
-  should _not_ sport a trailing 's'.
-
-  And we want all but tst, negs, cmp, cmn, and mvns to show 3 registers.)
+| Another annoying exception: like cmp i8, tst, cmp, and cmn reg-reg ops
+| should _not_ sport a trailing 's'.
+|
+| And we want all but tst, negs, cmp, cmn, and mvns to show 3 registers.
 
 : .alu
    dup 6 u>> 0f and ( aluop)  push
@@ -188,6 +188,11 @@ defer .reg  ( reg)
 : .bx       dup 7 bit@        z" bx blx"       .op3                RRm ;
 
 : load-pc+  ( byte-offset - addr)  instr-pc @  >load-pc  + ;
+
+| To disasm loads we want to show the loaded value, so we need to do an
+| "out of sequence" load.
+
+defer |@  ( fetch cell from image or target, depending on chatting state)
 
 : .ldr-pc   ." ldr    "  Rd8,  .[  i8 woff> load-pc+  dup .u32  .]
                                ."  = "  |@  dup set-ea  dup .u32
@@ -220,8 +225,8 @@ defer .reg  ( reg)
 : .sxt   z" sxth sxtb uxth uxtb " .4way-rr ;
 : .rev   z" rev  rev16???  revsh" .4way-rr ;
 
-( NOTE: .reglist will *not* print the leading "{" if the mask has no
-  registers in it! But since this is an *error* condition, it's ok.)
+| NOTE: .reglist will *not* print the leading "{" if the mask has no
+| registers in it! But since this is an *error* condition, it's ok.
 
 : .reglist  ( op mask - op)
    0 swap ( op reg mask)  char { push
@@ -275,12 +280,12 @@ defer .reg  ( reg)
 
 ( 32-bit instructions.)
 
-( 32-bit bl. For historical reasons the encoding is really strange. The
-  original Thumb instruction set used _two_ separate instructions to set
-  the high and low halves of the branch displacement. With the addition of
-  32-bit instructions into that same encoding space, the bl instruction has
-  been re-imagined as a 32-bit Thumb instruction with a very odd encoding -
-  and a larger possible displacement than its 16-bit predecessor.)
+| 32-bit bl. For historical reasons the encoding is really strange. The
+| original Thumb instruction set used _two_ separate instructions to set
+| the high and low halves of the branch displacement. With the addition of
+| 32-bit instructions into that same encoding space, the bl instruction has
+| been re-imagined as a 32-bit Thumb instruction with a very odd encoding -
+| and a larger possible displacement than its 16-bit predecessor.
 
 : bl-offset@  ( op - op hword-offset)
    dup           7ff and          ( imm11 in v6-m manual)
@@ -303,9 +308,9 @@ defer .reg  ( reg)
 : reg4  constant ( shift)
         does> @  ( op shift - op reg)  over swap u>>  0f and ;
 
-( We only need Rn4 and Rd4 for the v6-m instructions, but let's define
-  these all together so they make sense. The v7-m disassembler will need
-  all of them.)
+| We only need Rn4 and Rd4 for the v6-m instructions, but let's define
+| these all together so they make sense. The v7-m disassembler will need
+| all of them.
 
 #16 reg4 Rn4
 #12 reg4 Rt4
@@ -322,8 +327,8 @@ defer .reg  ( reg)
 : .Rd4,  .Rd4 comma ;
 
 
-( Print a SYSm value. See Table B4-1 Special register field encoding
-  from ARM-v6M architecture manual, p304)
+| Print a SYSm value. See Table B4-1 Special register field encoding
+| from ARM-v6M architecture manual, p304
 
 : .sysm
    dup 0ff and

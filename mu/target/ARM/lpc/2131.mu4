@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading NXP LPC2131 chip
 
@@ -11,4 +11,4 @@ loading NXP LPC2131 chip
 
 ld! target/ARM/processor/7tdmi.mu4
 
--- load peripheral equates etc
+| load peripheral equates etc

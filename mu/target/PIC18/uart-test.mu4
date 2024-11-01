@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading PIC18 UART test code
 
@@ -9,7 +9,7 @@ hex
 __meta
 
 ( Set config registers)
-.ifdef 1xk50   -- at the moment, the only option
+.ifdef 1xk50   | at the moment, the only option
    %0010_0010  ( CONFIG1H: FOSC=HS 0010)         CONFIG1H config-space c!
    %0001_1110  ( CONFIG2H: WDTEN=0)              CONFIG2H config-space c!
    %1100_0101  ( CONFIG4L: ENH_CPU=1)            CONFIG4L config-space c!
@@ -40,9 +40,9 @@ label the-real-reset-starts-here
    ( UART TX is on RB7; set it as an output)
    TRISB ) 7 bclr
 
-   ( Also, RX, on pin RB5, is shared with AN11, to which - rather oddly -
-     it defaults at reset. So we reset ANS11 to claim the pin as a digital
-     input.)
+   | Also, RX, on pin RB5, is shared with AN11, to which - rather oddly -
+   | it defaults at reset. So we reset ANS11 to claim the pin as a digital
+   | input.
    ANSELH ) 3 bclr
 
    #12,000,000 #57,600 / #16 / 1- ldi  SPBRG ) stw

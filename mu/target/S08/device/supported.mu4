@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading S08 device support:
 
@@ -8,11 +8,10 @@ loading S08 device support:
 : equ     ( offset)  current preserve  .equates. definitions  constant ;
 : vector  ( offset)  equ ;
 : reg     ( offset)  equ ;
-: |  \ -- ;  ( | ignores the bit-fields that follow each register name)
 : aka   .equates. chain' execute  equ ;  ( for making synonyms)
 
-( Given what has been defined, either in a load file or on the command
-  line, we load a file of device-specific "equates".)
+| Given what has been defined, either in a load file or on the command
+| line, we load a file of device-specific "equates".
 
 ( First try the 908 derivatives.)
 
@@ -37,7 +36,7 @@ loading S08 device support:
 .else .ifdef QG4   ." QG4"   ld target/S08/device/S08QG4.mu4
 .else .ifdef QG8   ." QG8"   ld target/S08/device/S08QG8.mu4
 
-  -- no device specified; default to connected device
+  | no device specified; default to connected device
 
 .else .ifdef usb-js-bootloader ." JS16"  ld target/S08/device/S08JS16.mu4
 .else .ifdef usb-target
@@ -49,7 +48,7 @@ loading S08 device support:
                    ." JS16"  ld target/S08/device/S08JS16.mu4
    .then .then  drop
 
-.else  -- assume serial target; default to QE32
+.else  | assume serial target; default to QE32
     ." QE32"  ld target/S08/device/S08QE32.mu4
 
 .then .then .then .then .then .then .then .then

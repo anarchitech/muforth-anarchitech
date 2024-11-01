@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( Load basic intel hex support.)
 ld lib/intel-hex.mu4
@@ -8,8 +8,8 @@ ld lib/intel-hex.mu4
 ( Define how to map target address to host.)
 -: ( target base - host)  +  image+ ;  is ihraddr>host
 
-( A command-line command, like -f. And, like -f, it does not work with
-  pathnames that contain spaces.)
+| A command-line command, like -f. And, like -f, it does not work with
+| pathnames that contain spaces.
 
 : -ihex
    token,  read-ihex-file

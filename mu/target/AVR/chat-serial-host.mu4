@@ -1,34 +1,34 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading AVR serial chat (host)
 
 hex
 
-( Taking inspiration from the wildly successful HC08 serial chat protocol.
+| Taking inspiration from the wildly successful HC08 serial chat protocol.
+|
+| Responds to the following commands. NOTE: these are hex values!
+|
+| 00 - 0f  idle        - these command bytes are ignored
+| 1c - ff  idle        - these command bytes are ignored
+|
+| 10  version-addr     - get the address of the version commit
+| 11  set-addr         - set memory address
+| 12  get-addr         - get memory address
+| 13  run              - push mem addr as ra; set mem addr; execute
+|
+| 14  read-flash       - set count, then streaming read of flash
+| 15  read-data        - read one byte of ram/data space, incr Z
+| 16  read-eeprom      - read one byte of xram, incr Z
+|
+| 17  write-flash      - write a word to flash page buffer, incr Z by 2
+| 18  write-data       - write one byte to ram/data space, incr Z
+| 19  write-eeprom     - write one byte to eeprom, incr Z
+|
+| 1a  app-start
+| 1b  app-stop
 
-  Responds to the following commands. NOTE: these are hex values!
-
-00 - 0f  idle        - these command bytes are ignored
-1c - ff  idle        - these command bytes are ignored
-
-10  version-addr     - get the address of the version commit
-11  set-addr         - set memory address
-12  get-addr         - get memory address
-13  run              - push mem addr as ra; set mem addr; execute
-
-14  read-flash       - set count, then streaming read of flash
-15  read-data        - read one byte of ram/data space, incr Z
-16  read-eeprom      - read one byte of xram, incr Z
-
-17  write-flash      - write a word to flash page buffer, incr Z by 2
-18  write-data       - write one byte to ram/data space, incr Z
-19  write-eeprom     - write one byte to eeprom, incr Z
-
-1a  app-start
-1b  app-stop
-)
 
 : >b   send ;
 : b>   recv ;
@@ -38,15 +38,15 @@ hex
 
 : >cmd  ?spkt  >b ;
 
-( "cx.<something>" words are chat *transport* code.
-  "c.<something>" words are the high-level chat interface code.)
+| "cx.<something>" words are chat *transport* code.
+| "c.<something>" words are the high-level chat interface code.
 
 variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
 
 
--- ------------------------------------------------------------------------
--- Chat transport interface
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Chat transport interface
+| ------------------------------------------------------------------------
 
 : cx.idle                     0 >cmd ;
 : cx.version-addr            10 >cmd ;  ( then read 4 bytes of flash)
@@ -65,9 +65,9 @@ variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
 : cx.app-start               1a >cmd ;
 : cx.app-stop                1b >cmd ;
 
--- ------------------------------------------------------------------------
--- Helper code
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Helper code
+| ------------------------------------------------------------------------
 
 ( Send two no-ops, let them transmit, *then* throw away any input bytes.)
 : c.resync  cx.idle  cx.idle  drain  flush ;
@@ -78,9 +78,9 @@ variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
 ( Set memory address and m.)
 : c.setup-chunk  ( buf a u - #bytes)  swap cx.set-addr  swap m ! ;
 
--- ------------------------------------------------------------------------
--- Chat interface
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Chat interface
+| ------------------------------------------------------------------------
 
 : c.hello  ( - #chunk)
 .ifdef cksel  ( assume 16M clock and thus 115,200 bps)
@@ -92,23 +92,23 @@ variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
    radix preserve  hex  sep preserve  -sep   <# 4# 4# #> type
    #128 ;
 
-( NOTE: In order to execute code we pass two values to the chat code: a PC
-  in return address form [ra], and a second value that could be used as a
-  context pointer or stack pointer, but the interpretation of it is up to the
-  called code.)
+| NOTE: In order to execute code we pass two values to the chat code: a PC
+| in return address form (ra), and a second value that could be used as a
+| context pointer or stack pointer, but the interpretation of it is up to the
+| called code.
 
 : c.run  ( cp pc)
    \m >ra cx.set-addr  ( set mem addr to PC in ra form)
    cx.run  ( set mem addr to CP and execute code) ;
 
-( Get the current value of the mem address pointer; this is our context
-  pointer or stack pointer.)
+| Get the current value of the mem address pointer; this is our context
+| pointer or stack pointer.
 
 : c.get-status  ( - cp)  cx.get-addr ;
 
 ( Interact code handles which memory space we are reading.)
 : c.read-space   ( buf a u space)
-   -- cr  ." c.read "  2 nth u.  over u.  dup u.
+   | cr  ." c.read "  2 nth u.  over u.  dup u.
    push  c.setup-chunk  pop
    ?if  ( data or eeprom: single byte reads)
       cx-space !  for  cx.read-byte m&  next  ^
@@ -122,8 +122,8 @@ variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
 : c.write-eeprom   ( buf a u)
    c.setup-chunk  for  m* cx.write-eeprom  next ;
 
-( For app-stop we send the app-stop command, then the get-status command -
-  to make sure it's done executing - and throw away the value.)
+| For app-stop we send the app-stop command, then the get-status command -
+| to make sure it's done executing - and throw away the value.
 
 : c.app-stop
    cx.app-stop  c.get-status drop ;
@@ -131,9 +131,9 @@ variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
 ( Before flashing, make sure to stop the app.)
 : c.flash-begin   c.app-stop ;
 
-( After flashing, we have to re-enable the RWW section. But we don't
-  automatically start the app running again. We want to verify first, at
-  the very least!)
+| After flashing, we have to re-enable the RWW section. But we don't
+| automatically start the app running again. We want to verify first, at
+| the very least!
 
 : c.flash-end
    0 cx.set-addr ( beginning of flash)
@@ -142,8 +142,8 @@ variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
 : c.erase     ( a)
    cx.set-addr  0 %0000_0011 ( PGERS + SELFPRGEN) cx.write-flash  ( erase page) ;
 
-( For each word in buf, write it to the chip's flash page buffer, then send
-  the page program command.)
+| For each word in buf, write it to the chip's flash page buffer, then send
+| the page program command.
 
 : c.program   ( buf a u)
    over push ( save addr)
@@ -152,8 +152,8 @@ variable cx-space  ( 0 = flash, 1 = data, 2 = eeprom)
    pop cx.set-addr  ( set address again)
    0 %0000_0101 ( PGWRT + SELFPRGEN) cx.write-flash  ( write page buffer to flash) ;
 
-( NOTE: We are *provisionally* removing app-start and app-stop from the
-  chat-via array, and *deprecating* their use in interact.mu4.)
+| NOTE: We are *provisionally* removing app-start and app-stop from the
+| chat-via array, and *deprecating* their use in interact.mu4.
 
 : chat   chat-via
    c.hello  c.get-status  c.run  c.read-space  c.write-data  c.write-eeprom

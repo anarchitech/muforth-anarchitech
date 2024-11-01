@@ -1,67 +1,67 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading MSP430 serial chat protocol v4 (core)
 
-( This is for FRAM targets *only*. I created it because of the truly
-  terrible USB-CDC UART in the ezFET on the MSP430FR6989 Launchpad. Any
-  time the host sends bytes and then waits for a response from the target,
-  there is a huge latency. Throughput drops to hundreds of bytes per second.
-  It feels like working over a 2400 bps modem!
+| This is for FRAM targets *only*. I created it because of the truly
+| terrible USB-CDC UART in the ezFET on the MSP430FR6989 Launchpad. Any
+| time the host sends bytes and then waits for a response from the target,
+| there is a huge latency. Throughput drops to hundreds of bytes per second.
+| It feels like working over a 2400 bps modem!
+|
+| By minimizing these "turnarounds" I hope to speed things up - a lot.
+|
+| This version is "streaming" style like v2, but uses the GetStatus and Run
+| commands - which immediately send the registers over the wire - from v3.
+|
+| I'm giving up on v3 because:
+|
+| (1) It's too complicated to do a chat that works for both Flash parts
+|     with byte-wide I/O *and* FRAM parts, and still fit everything. The FR6989,
+|     eg, has more vectors - starting at ff80 instead of ffc0 - so we lose 64
+|     bytes of space.
+|
+| (2) Streaming style is simpler and takes less code, and even though more
+|     bytes are going down the wire, as long as they are going in the same
+|     direction, it's not a problem.
+|
+| I'm also going to leave out "paranoid" mode (the checksumming dance)
+| because I never use it and it seems unnecessary.
 
-  By minimizing these "turnarounds" I hope to speed things up - a lot.
 
-  This version is "streaming" style like v2, but uses the GetStatus and Run
-  commands - which immediately send the registers over the wire - from v3.
+| Taking inspiration from the wildly successful HC08 serial chat protocol.
+|
+| Responds to the following commands. NOTE: these are hex values!
+|
+| 00 - 3f  Idle        - these command bytes are ignored
+|
+| 40  VersionAddr      - get the address of the version commit
+| 41  SetAddr          - set the memory address pointer
+| 42  GetStatus        - get SP, PC, SR, and CP
+| 43  Run              - set SP, PC, SR, CP, and execute
+| 44  ReadWords        - read N words, incrementing by 2 as we go
+| 45  WriteWord        - write a word to memory, incr pointer by 2
+| 46  WriteByte        - write a byte to memory, incr pointer by 1
+| 47  SetFlashCmd      - set flash command, clear flash status
+| 48  GetFlashStatus   - read accumulated flash status word
+| 49  FlashWord        - write a word to flash, incr pointer
+|
+| 4a - ff  Idle        - these command bytes are ignored
 
-  I'm giving up on v3 because:
-
-  [1] It's too complicated to do a chat that works for both Flash parts
-      with byte-wide I/O *and* FRAM parts, and still fit everything. The FR6989,
-      eg, has more vectors - starting at ff80 instead of ffc0 - so we lose 64
-      bytes of space.
-
-  [2] Streaming style is simpler and takes less code, and even though more
-      bytes are going down the wire, as long as they are going in the same
-      direction, it's not a problem.
-
-  I'm also going to leave out "paranoid" mode [the checksumming dance]
-  because I never use it and it seems unnecessary.
-)
-
-( Taking inspiration from the wildly successful HC08 serial chat protocol.
-
-  Responds to the following commands. NOTE: these are hex values!
-
-00 - 3f  Idle        - these command bytes are ignored
-
-40  VersionAddr      - get the address of the version commit
-41  SetAddr          - set the memory address pointer
-42  GetStatus        - get SP, PC, SR, and CP
-43  Run              - set SP, PC, SR, CP, and execute
-44  ReadWords        - read N words, incrementing by 2 as we go
-45  WriteWord        - write a word to memory, incr pointer by 2
-46  WriteByte        - write a byte to memory, incr pointer by 1
-47  SetFlashCmd      - set flash command, clear flash status
-48  GetFlashStatus   - read accumulated flash status word
-49  FlashWord        - write a word to flash, incr pointer
-
-4a - ff  Idle        - these command bytes are ignored
-)
 
 decimal
 
 assembler
-( The chat code passes back and forth between host and target - but does
-  not otherwise touch - the context pointer, cp. It is used to pass
-  execution context between the host and target. By default we assume it is
-  the first "callee-saved" register, r4.)
+| The chat code passes back and forth between host and target - but does
+| not otherwise touch - the context pointer, cp. It is used to pass
+| execution context between the host and target. By default we assume it is
+| the first "callee-saved" register, r4.
 
  04 reg cp     ( context pointer)
 
-( These are all considered "caller saved" registers. They are scratch.
-  Called code can freely clobber them.)
+| These are all considered "caller saved" registers. They are scratch.
+| Called code can freely clobber them.
 
  12 reg fcmd   ( flash command)
  13 reg fstat  ( flash status)
@@ -81,9 +81,9 @@ hex
 
 __meta
 
-( Compile the first 32 bits of the current muforth Git commit.
-  These will always be the first four bytes of the file, so verify can be
-  smart about ignoring them.)
+| Compile the first 32 bits of the current muforth Git commit.
+| These will always be the first four bytes of the file, so verify can be
+| smart about ignoring them.
 
 label version
    muforth-commit drop 8 evaluate
@@ -92,8 +92,8 @@ label version
 ( The commit is followed by a pointer to the chat entry code.)
 label chat-entry-vector   0 ,
 
-( Load the device-specific init code, and device-specific versions of
-  get-byte and put-byte.)
+| Load the device-specific init code, and device-specific versions of
+| get-byte and put-byte.
 
 ( G2553 uses chat2 right now, but having this here might be helpful.)
 .ifdef g2553   ld target/MSP430/device/g2553/chat-support.mu4  .then
@@ -141,32 +141,32 @@ label write-word
 .equates. .contains FCTL1 .if
 
 label set-flash-command
-   get-word c  top fcmd mov      -- receive and save flash command from host
-   fstat clr                     -- clear flash status
+   get-word c  top fcmd mov      | receive and save flash command from host
+   fstat clr                     | clear flash status
    ret  ;c
 
-( Return accumulated flash status word to host. For safety, also clear the
-  fcmd register.)
+| Return accumulated flash status word to host. For safety, also clear the
+| fcmd register.
 
 label get-flash-status
    fcmd clr  fstat top mov  put-word j  ;c
 
-( Execute the flash command saved in fcmd. After command completes, read
-  the flash status and OR it into fstat. According to the user manual,
-  interrupts are automatically disabled during any flash operation.)
+| Execute the flash command saved in fcmd. After command completes, read
+| the flash status and OR it into fstat. According to the user manual,
+| interrupts are automatically disabled during any flash operation.
 
 label flash-word
-   get-word c                    -- receive word to flash
-   FKEY # FCTL3 & mov            -- clear FLOCK
-   fcmd FCTL1 & mov              -- write flash command - must have FKEY!
-   top mp ) mov  2 # mp add      -- write word and incr pointer
+   get-word c                    | receive word to flash
+   FKEY # FCTL3 & mov            | clear FLOCK
+   fcmd FCTL1 & mov              | write flash command - must have FKEY!
+   top mp ) mov  2 # mp add      | write word and incr pointer
 .ifdef in-ram
    begin  FBUSY # FCTL3 & bit  0= until
 .then
-   FKEY # FCTL1 & mov            -- clear command
-   FCTL3 & top mov               -- read status word
-   FKEY FLOCK + # FCTL3 & mov    -- set FLOCK
-   top fstat bis                 -- OR resulting flash status into fstat
+   FKEY # FCTL1 & mov            | clear command
+   FCTL3 & top mov               | read status word
+   FKEY FLOCK + # FCTL3 & mov    | set FLOCK
+   top fstat bis                 | OR resulting flash status into fstat
    ret  ;c
 
 .else  ( FRAM device)
@@ -209,33 +209,33 @@ label process
 label chat-entry
    ( call has already pushed PC)
    sr push
-   -- We no longer disable interrupts by default when entering chat.
+   | We no longer disable interrupts by default when entering chat.
    begin  process c  again  ;c
 
 chat-entry chat-entry-vector image-!  ( patch the vector)
 
-( This creates a slot for the PC which can be replaced with the address of
-  native code to execute. That code can end with a return instruction, which
-  will return to the call to interact below, and then re-enter chat with
-  the same stack layout: a PC slot below a "protective" return address. It's
-  easier to visualize than to explain. ;-)
+| This creates a slot for the PC which can be replaced with the address of
+| native code to execute. That code can end with a return instruction, which
+| will return to the call to interact below, and then re-enter chat with
+| the same stack layout: a PC slot below a "protective" return address. It's
+| easier to visualize than to explain. ;-)
 
 label interact
    begin  chat-entry c  again  ;c
 
 Vreset handler
-   -- set SP to end of RAM
+   | set SP to end of RAM
    @ram #ram +  # sp mov
 
 .ifndef in-ram  ( the flash-based code already did all this)
 
-   -- disable watchdog timer
+   | disable watchdog timer
    WDTKEY 80 + # WDTCTL & mov
 
-   -- If the device has at least 2 KiB of ram, push a vector table of
-   -- "empty" entries. This gives the user the option to have a
-   -- ram-resident vector table for easy debugging of interrupt-driven
-   -- code.
+   | If the device has at least 2 KiB of ram, push a vector table of
+   | "empty" entries. This gives the user the option to have a
+   | ram-resident vector table for easy debugging of interrupt-driven
+   | code.
 
 #ram 2 Ki \f u< .not .if   ( \f is necessary to get forth, not asm, u< )
    #vectors 2/ # top mov  ( #cells)  begin
@@ -243,23 +243,23 @@ Vreset handler
    1 # top sub  0= until
 .then
 
-   ( Call the device-specific initialization code. This will set up ports,
-     clocks, UART, etc, and flash leds, if any.)
+   | Call the device-specific initialization code. This will set up ports,
+   | clocks, UART, etc, and flash leds, if any.
 
    device-init c
 .then
 
-   -- Initialize the UART.
+   | Initialize the UART.
    uart-init c
 
-   ( This is here so that native code can simply return and it will
-     re-enter the chat code with a proper stack.)
+   | This is here so that native code can simply return and it will
+   | re-enter the chat code with a proper stack.
 
    begin  interact c  again  ;c
 
 
-( If possible, set a BSL flag to _not_ mass erase if wrong password entered
-  during BSL "hello" sequence.)
+| If possible, set a BSL flag to _not_ mass erase if wrong password entered
+| during BSL "hello" sequence.
 
 here
 .equates. .contains Vbslkey .if

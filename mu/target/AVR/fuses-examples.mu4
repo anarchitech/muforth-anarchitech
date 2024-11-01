@@ -1,19 +1,19 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( Examples to try out the fuses generator.)
 
 ( Try uncommenting a different device.)
--- -d mega324
--- -d mega168
+| -d mega324
+| -d mega168
 -d mega328
 
 ld! target/AVR/build.mu4
 
-( Try different combinations of fuse bit settings. See target/AVR/fuses.mu4
-  for the list. Uncommenting any of these will result in the default value
-  being used instead.)
+| Try different combinations of fuse bit settings. See target/AVR/fuses.mu4
+| for the list. Commenting out any of these will result in the default value
+| being used instead.
 
          -d eesave
  0 constant cksel

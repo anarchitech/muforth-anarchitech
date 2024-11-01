@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading Serial chat code - in Forth! (target)
 
@@ -18,7 +18,7 @@ label fake-reset  ( for bootloader Run command)
 
 ld target/ARM/v6-m/kernel-itc.mu4
 
--- : +!    (    n addr)  tuck @  +    swap ! ;
+| : +!    (    n addr)  tuck @  +    swap ! ;
 : set!  ( bits addr)  tuck @  or   swap ! ;
 : clr!  ( bits addr)  tuck @  bic  swap ! ;
 
@@ -31,9 +31,9 @@ ld target/ARM/v6-m/kernel-itc.mu4
 
 : 2drop  drop drop ;
 
-( Read a register, over and over, by byte or word, either until one of the
-  bits specified is set [?set,?cset], or until all of the bits specified
-  are clear [?clr,?cclr].)
+| Read a register, over and over, by byte or word, either until one of the
+| bits specified is set (?set,?cset), or until all of the bits specified
+| are clear (?clr,?cclr).
 
 : ?set   ( reg bits)   begin  over @   over and     until  2drop ;
 : ?clr   ( reg bits)   begin  over @   over and  0= until  2drop ;
@@ -55,12 +55,12 @@ ld target/ARM/v6-m/kernel-itc.mu4
 : pll-on    [ RCC_CR 3 + #]  1 over c!  2 ?cset ;
 : pll-off   [ RCC_CR 3 + #]  0 over c!  2 ?cclr ;
 
-( Turn on HSE, which is driven by an 8 Mhz signal from the ST-LINK. Use it
-  to drive the PLL to 48 Mhz - x6 - and when the PLL stabilizes, switch to
-  it as the system clock source.)
+| Turn on HSE, which is driven by an 8 Mhz signal from the ST-LINK. Use it
+| to drive the PLL to 48 Mhz - x6 - and when the PLL stabilizes, switch to
+| it as the system clock source.
 
 : clock-init
-   -- hse-on  >hse  ( non ST-LINK)
+   | hse-on  >hse  ( non ST-LINK)
    hse-byp-on  >hse  ( ST-LINK)
    pll-off
    ( XXX writing 00 to low byte of CFGR sets HSI as clock source!)
@@ -72,58 +72,58 @@ ld target/ARM/v6-m/kernel-itc.mu4
    >pll ;
 
 : led-init
-   -- Turn on clock to Port E
+   | Turn on clock to Port E
    ( Ports GFED_CBAH )
         [ %0010_0000  #16 << #] RCC_AHBENR set!
-   -- Make PE8 to PE15 outputs
+   | Make PE8 to PE15 outputs
    5555_0000 GPIOE_MODER ! ;
 
 ( Also include GPIOA init for USART1.)
 ( NOTE: AF7 on F303)
-( I let the F303 boot into the serial bootloader, connected to it, then
-  stopped it with ST-LINK and pulled out some configuration.
+| I let the F303 boot into the serial bootloader, connected to it, then
+| stopped it with ST-LINK and pulled out some configuration.
+|
+| Settings for PA9 and PA10:
+|
+|    MODER      10 for both: alternate function
+|    OSPEEDR:   11 for both: fastest speed
+|    PUPDR:     01 for both: pullup
+|    AFRH:    0111 for both: AF7
+|
+| On older chips - eg F103/F105 - and on the new GigaDevice GD32VF103! -
+| the GPIO configuration is somewhat different.
+|
+| GPIOx_CRL and _CRH have 4 bits per GPIO pin: CNF<2>:MODE<2>
+|
+| Here are the tables of their meanings:
+|
+| MODE  Meaning
+|  00   Input
+|  01   Output; Maximum speed 10 MHz
+|  10   Output; Maximum speed 2 MHz
+|  11   Output; Maximum speed 50 MHz
+|
+| If MODE = 00:
+| CNF   Meaning
+|  00   Analog
+|  01   Input floating
+|  10   Input pull-up / pull-down
+|  11   Reserved
+|
+| If MODE != 00:
+| CNF   Meaning
+|  00   Output, general purpose, push-pull
+|  01   Output, general purpose, open-drain
+|  10   Output, alternate function, push-pull
+|  11   Output, alternate function, open-drain
+|
+| If MODE = 00 and CNF = 10, the GPIOx_ODR bit corresponding to the pin
+| determines the direction of the pull-up/-down:
+|
+| ODR
+|  0   pull-down
+|  1   pull-up
 
-  Settings for PA9 and PA10:
-
-     MODER      10 for both: alternate function
-     OSPEEDR:   11 for both: fastest speed
-     PUPDR:     01 for both: pullup
-     AFRH:    0111 for both: AF7
-
-  On older chips - eg F103/F105 - and on the new GigaDevice GD32VF103! -
-  the GPIO configuration is somewhat different.
-
-  GPIOx_CRL and _CRH have 4 bits per GPIO pin: CNF<2>:MODE<2>
-
-  Here are the tables of their meanings:
-
-  MODE  Meaning
-   00   Input
-   01   Output; Maximum speed 10 MHz
-   10   Output; Maximum speed 2 MHz
-   11   Output; Maximum speed 50 MHz
-
-  If MODE = 00:
-  CNF   Meaning
-   00   Analog
-   01   Input floating
-   10   Input pull-up / pull-down
-   11   Reserved
-
-  If MODE != 00:
-  CNF   Meaning
-   00   Output, general purpose, push-pull
-   01   Output, general purpose, open-drain
-   10   Output, alternate function, push-pull
-   11   Output, alternate function, open-drain
-
-  If MODE = 00 and CNF = 10, the GPIOx_ODR bit corresponding to the pin
-  determines the direction of the pull-up/-down:
-
-  ODR
-   0   pull-down
-   1   pull-up
-)
 
 : uart-init
    [ 1 #14 << #] ( USART1 clock enable) RCC_APB2ENR set!
@@ -131,7 +131,7 @@ ld target/ARM/v6-m/kernel-itc.mu4
 
    ( PA9 is TX; PA10 is RX)
    %1010 #18 4 GPIOA_MODER f!  ( alternate function)
-   -- %1111 #18 4 GPIOA_OSPEEDR f!  ( do we *really* need this?)
+   | %1111 #18 4 GPIOA_OSPEEDR f!  ( do we *really* need this?)
    %0101 #18 4 GPIOA_PUPDR f!  ( pull up)
      "77   4 8 GPIOA_AFRH f!  ( AF7: USART1)
 
@@ -140,8 +140,8 @@ ld target/ARM/v6-m/kernel-itc.mu4
    [ #48,000,000 #115,200 / #] USART1_BRR !
    1 ( UE: uart enable) swap set! ;
 
-( NOTE: USARTx_ISR and USARTx_SR have TC, TXE, and RXNE bits in the same
-  place.)
+| NOTE: USARTx_ISR and USARTx_SR have TC, TXE, and RXNE bits in the same
+| place.
 
 : b>  ( - b)  USART1_ISR [ 1 5 << #] ( RXNE) ?set  USART1_RDR @ ;
 : >b  ( b)    USART1_ISR [ 1 7 << #] ( TXE)  ?set  USART1_TDR ! ;
@@ -176,8 +176,8 @@ code depth
 : run            stack>  execute  depth >w ;
 
 ( XXX Do we need these in general? Should they be in the kernel?)
-( XXX Maybe defined in terms of create/does words? lshifter, urshifter,
-  srshifter?)
+| XXX Maybe defined in terms of create/does words? lshifter, urshifter,
+| srshifter?
 
 : cells   2* 2* ;
 : cell/   2/ 2/ ;
@@ -189,7 +189,7 @@ code depth
       jump  version  read-memory  write-memory  run
    then  drop ;
 
--- : chat   chip-init  begin  b> dispatch  again ;
+| : chat   chip-init  begin  b> dispatch  again ;
 : chat   chip-init  begin  RCC_CFGR @ >w  again ;
 
 ( So we can "call" this code or jump to it at reset.)
@@ -201,8 +201,8 @@ label reset
 here 1+ ( thumb!)  fake-reset cell+ !
 
 Reset_exc handler
-   -- Startup code!
-   -- Since we have a Forth kernel, let's write the startup code in Forth!
+   | Startup code!
+   | Since we have a Forth kernel, let's write the startup code in Forth!
    sp rp mov   #64 cells sp sp sub  ( RP at end of RAM; SP below)
    ' chat cell+  ip  lit
    0decafbad     top lit

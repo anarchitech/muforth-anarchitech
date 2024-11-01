@@ -1,60 +1,60 @@
-( This file is part of muforth: https://muforth.dev/
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| loading Core memory
 
--- loading Core memory
+| We define three kinds of memory objects:
+|
+|  - address spaces (aspaces)
+|  - images
+|  - regions
+|
+| An aspace contains one or more images; each image contains one or more
+| regions. Each region belongs to a single image; each image belongs to a
+| single aspace.
+|
+| A von Neumann machine will have *one* address space that contains,
+| generally, a flash image and a ram image. Each image will, generally,
+| contain a single region; however, if there is a "boot block" region in the
+| flash, often we want to set that up as a second region in the flash image.
+|
+| A Harvard machine will generally have *two* or *three* address spaces.
+| Flash and data (ram and i/o) are the common two; sometimes eeprom is its
+| own aspace, sometimes it's part of the flash aspace, and sometimes there
+| isn't any!
+|
+| An aspace define two things: an address bit-width, and a function that
+| maps from an address within the space to an *image*. The dumping/disasming
+| code uses the bit-width to calculate how many digits of address to print;
+| and it uses the mapping function to figure out which image an address
+| belongs to, so it can display the contents of the image.
+|
+| An image refers back to the aspace it belongs to; it also defines a size
+| in bytes and an array of those bytes. A region, similarly, refers back to
+| an image; it also defines origin and current pointer addresses. "here"
+| simply returns the current pointer value in the current region.
+|
+| Simple, right? ;-)
 
-( We define three kinds of memory objects:
-
-   - address spaces [aspaces]
-   - images
-   - regions
-
-  An aspace contains one or more images; each image contains one or more
-  regions. Each region belongs to a single image; each image belongs to a
-  single aspace.
-
-  A von Neumann machine will have *one* address space that contains,
-  generally, a flash image and a ram image. Each image will, generally,
-  contain a single region; however, if there is a "boot block" region in the
-  flash, often we want to set that up as a second region in the flash image.
-
-  A Harvard machine will generally have *two* or *three* address spaces.
-  Flash and data [ram and i/o] are the common two; sometimes eeprom is its
-  own aspace, sometimes it's part of the flash aspace, and sometimes there
-  isn't any!
-
-  An aspace define two things: an address bit-width, and a function that
-  maps from an address within the space to an *image*. The dumping/disasming
-  code uses the bit-width to calculate how many digits of address to print;
-  and it uses the mapping function to figure out which image an address
-  belongs to, so it can display the contents of the image.
-
-  An image refers back to the aspace it belongs to; it also defines a size
-  in bytes and an array of those bytes. A region, similarly, refers back to
-  an image; it also defines origin and current pointer addresses. "here"
-  simply returns the current pointer value in the current region.
-
-  Simple, right? ;-)
-
-( NOTE: Before loading this code, define the following values that
-  describe the target:
-
-    bytes/cell
-    big-endian or little-endian
-
-  *After* loading this code, each aspace's "choose-image" variable [see
-  below] must be set to code specific to that aspace.)
+| NOTE: Before loading this code, define the following values that
+| describe the target:
+|
+|   bytes/cell
+|   big-endian or little-endian
+|
+| *After* loading this code, each aspace's "choose-image" variable (see
+| below) must be set to code specific to that aspace.
 
 
 ( Regions.)
 
-( When a region is created, it stores a pointer to the image's first byte
-  in its body, before the current and origin pointers.)
+| When a region is created, it stores a pointer to the image's first byte
+| in its body, before the current and origin pointers.
 
-( XXX This should probably be called r instead, but there is a *lot* of
-  code that does "h preserve" that would have to change... I guess that
-  qualifies as a leaky abstraction.)
+| XXX This should probably be called r instead, but there is a *lot* of
+| code that does "h preserve" that would have to change... I guess that
+| qualifies as a leaky abstraction.
 
 variable h    ( dictionary pointer pointer; points to current *region*)
 : dp   h @ ;  ( dictionary pointer)
@@ -63,8 +63,8 @@ variable h    ( dictionary pointer pointer; points to current *region*)
    create  ,  0 , 0 ,  ( 'image, ptr, origin)
    does> cell+ h ! ;  ( h points to ptr cell)
 
-( Show current region, or, if unset, say that. Every target should set
-  region to *something* when loading its build.mu4.)
+| Show current region, or, if unset, say that. Every target should set
+| region to *something* when loading its build.mu4.
 
 : .region
    dp  ?if  cell- body> >name type ^  then  ." no region specified" ;
@@ -75,21 +75,21 @@ variable h    ( dictionary pointer pointer; points to current *region*)
 
 ( Images.)
 
-( Memory images should be stored in the dictionary like strings: prefixed
-  by their length. When we push an image, we push the address of its first
-  byte, but the previous cell countains the count, if we want to do bounds
-  checking or address wrapping.
-
-  Images are unnamed! They are "addressable" only as a by-product of a
-  *region* that points into an image.)
+| Memory images should be stored in the dictionary like strings: prefixed
+| by their length. When we push an image, we push the address of its first
+| byte, but the previous cell countains the count, if we want to do bounds
+| checking or address wrapping.
+|
+| Images are unnamed! They are "addressable" only as a by-product of a
+| *region* that points into an image.
 
 : log_2  ( n - exp mant)
    0 swap  begin  dup 1 and 0= while  1 u+  u2/  repeat ;
 
 : power-of-two?  ( n - f)  log_2 nip  1 = ;
 
-( Create an image and leave a pointer to its first byte; this pointer is
-  consumed by each region that is created inside the image.)
+| Create an image and leave a pointer to its first byte; this pointer is
+| consumed by each region that is created inside the image.
 
 : make-image  ( 'aspace #bytes - 'image)
    aligned  dup power-of-two?  0= if  error" image size not a power of 2"  then
@@ -104,14 +104,14 @@ variable h    ( dictionary pointer pointer; points to current *region*)
 
 ( Aspaces.)
 
-( Like images, aspaces are unnamed. They are "addressable" only as a
-  by-product of a *region* that points into an image, which points to an
-  aspace. The definition of an aspace contains two values: bits/addr for
-  that aspace, followed by a pointer to a choose-image word.)
+| Like images, aspaces are unnamed. They are "addressable" only as a
+| by-product of a *region* that points into an image, which points to an
+| aspace. The definition of an aspace contains two values: bits/addr for
+| that aspace, followed by a pointer to a choose-image word.
 
-( Create an aspace and leave a pointer to it; this pointer is consumed by
-  each image that is created inside the aspace. We default the choose-image
-  word to be "drop".)
+| Create an aspace and leave a pointer to it; this pointer is consumed by
+| each image that is created inside the aspace. We default the choose-image
+| word to be "drop".
 
 : make-aspace  ( bits/addr - 'aspace)
    here  swap ,  [ ' drop #] , ;
@@ -122,16 +122,16 @@ variable h    ( dictionary pointer pointer; points to current *region*)
 ( Based on current region, fetch bits/addr from aspace.)
 : bits/addr  ( - bits/addr)  'aspace @ ;
 
-( Based on current region, return a pointer to the cell that contains the
-  address of the choose-image word for that aspace.)
+| Based on current region, return a pointer to the cell that contains the
+| address of the choose-image word for that aspace.
 
 : 'choose-image  ( - 'choose-image)  'aspace cell+ ;
 
-( What choose-image does: Given a target address, choose *any* region in
-  the current aspace whose corresponding image contains that address, and
-  make it the current region. choose-image is used to convert a target
-  address - in a given aspace - to a host address. The region that is chosen
-  is irrelevant; it is important only in indirectly specifying an image.)
+| What choose-image does: Given a target address, choose *any* region in
+| the current aspace whose corresponding image contains that address, and
+| make it the current region. choose-image is used to convert a target
+| address - in a given aspace - to a host address. The region that is chosen
+| is irrelevant; it is important only in indirectly specifying an image.
 
 : choose-image  ( target)  'choose-image @execute ;
 
@@ -142,8 +142,8 @@ variable h    ( dictionary pointer pointer; points to current *region*)
 : image-c@   image+ c@ ;
 : image-c!   image+ c! ;
 
-( After each definition of image-@ we use ' to leave on the stack the
-  address of the correct word for du to use for that target.)
+| After each definition of image-@ we use ' to leave on the stack the
+| address of the correct word for du to use for that target.
 
 .ifdef little-endian
    bytes/cell 4 = .if  ( 32-bit target)
@@ -174,19 +174,14 @@ variable h    ( dictionary pointer pointer; points to current *region*)
 .then .then
 
 ( The above mess left the address of a "cell@" word on the stack.)
-: du-target
+: du-target  ( 'read)
+           is |read
    [ #]    is |cell@
    bits/addr  |addr !
    bytes/cell |cell ! ;
 
--: ( buf a u)  swap image+ -rot  cmove ;  ( read from image)
-: >image
-   [ #]    is |read
-   du-target ;
-
--- NOTE: we cannot execute >image yet - we need to have defined an aspace
--- and at least one image and region.
--- >image  ( default to image; this can change once we are chatting with target.)
+( Useful for each target's >image.)
+: read-host-image  ( buf a u)  swap image+ -rot  cmove ;
 
 meta
 bytes/cell constant cell
@@ -198,30 +193,43 @@ bytes/cell constant cell
 : here    ( - a)  dp       @ ;
 : origin  ( - a)  dp cell+ @ ;  ( "region drop" also works)
 
+| In muforth's past, "goto" was called "org". I never liked the name. "Org"
+| started life as an assembler "directive" in the 1960s or 1970s. It wasn't
+| clear what it meant back then, and it is no clearer now.
+
 : goto   ( a)    dp ! ;   ( set region pointer to a)
 : allot  ( n)    dp +! ;
 
-: c,    ( ch)   \m here image-c!       1 \m allot ;
-: ,     ( w)    ( \m align)   \m here image-!  \m cell \m allot ;
+: c,    ( ch)              \m here image-c!       1 \m allot ;
 
 forth
 ( Align an offset to an arbitrary power-of-2 alignment.)
 : aligned-by  ( offset alignment - offset')  push  r@ 1- +  pop negate and ;
-: mask-align,  ( b mask)  \m here  negate and  for  dup \m c,  next  drop ;
 
 meta
-: aligned         \m cell    aligned-by ;  ( cell aligned)
-: align,    ( b)  \m cell 1- mask-align, ;
+: mask-align,  ( b mask)  \m here  negate and  for  dup \m c,  next  drop ;
+
+: aligned         \m cell     aligned-by ;  ( target cell aligned)
+: align,    ( b)  \m cell 1-  \m mask-align, ;
 : align       0   \m align, ;
 
 bytes/cell 4 = .if  ( only define "halfword" words for 32-bit targets)
 
 : haligned                 2 aligned-by ;  ( halfword aligned)
-: halign,   ( b)           1 mask-align, ;
+: halign,   ( b)           1 \m mask-align, ;
 : halign      0   \m halign, ;
-: h,    ( h)    ( \m halign)  \m here image-h!       2 \m allot ;
+
+( h, always aligns!)
+: h,    ( h)    \m halign  \m here image-h!       2 \m allot ;
 
 .then
+
+.ifdef target-comma-aligns
+: ,     ( w)    \m align   \m here image-!  \m cell \m allot ;
+.else
+: ,     ( w)               \m here image-!  \m cell \m allot ;
+.then
+
 
 forth
 ( Return the start address and number of bytes in current region.)

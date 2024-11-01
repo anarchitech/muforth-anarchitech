@@ -1,15 +1,13 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading ARM v6-M memory image
 
-( Default some memory sizes and origins.)
-
-( On most Cortex-M devices, flash starts at 0. STM32 are different; their
-  flash starts at "0800_0000. But since we wrap the addresses, our local
-  image can assume flash starts at 0. But we'll use @flash when setting up
-  the origin for the code that we're compiling.)
+| On most Cortex-M devices, flash starts at 0. STM32 are different; their
+| flash starts at "0800_0000. But since we wrap the addresses, our local
+| image can assume flash starts at 0. But we'll use @flash when setting up
+| the origin for the code that we're compiling.
 
 .ifndef @flash
    0 constant @flash
@@ -18,11 +16,11 @@ loading ARM v6-M memory image
    256 Ki constant #flash
 .then
 
-( On all Cortex-M devices, SRAM starts at "2000_0000. Well, mostly. On
-  Freescale's Kinetis K and L series - and maybe others - there is SRAM at
-  "2000_0000 but also at the end of the code region, ie at "1fff_f000. For
-  debugging we can simply assume on all devices that there will be SRAM at
-  "2000_0000.)
+| On all Cortex-M devices, SRAM starts at "2000_0000. Well, mostly. On
+| Freescale's Kinetis K and L series - and maybe others - there is SRAM at
+| "2000_0000 but also at the end of the code region, ie at "1fff_f000. For
+| debugging we can simply assume on all devices that there will be SRAM at
+| "2000_0000.
 
 .ifndef @ram
    "2000_0000 constant @ram
@@ -31,14 +29,22 @@ loading ARM v6-M memory image
    8 Ki constant #ram
 .then
 
+( Define the basics of the target's memory.)
+-d little-endian
+
+ld target/common/memory-von-neumann-32.mu4
+
+
+.ifdef legacy-arm-memory
+
 : power-of-two?  ( f)
    begin  dup 1 and 0=  while  u2/  repeat  1 = ;
 
 : round-up-to-power-of-two  ( n - n')
    1  begin  2dup swap u< while  2*  repeat  nip ;
 
-( Memory images are prefixed by their current pointer, origin, and size in
-  bytes.)
+| Memory images are prefixed by their current pointer, origin, and size in
+| bytes.
 
 variable h  ( Dictionary pointer pointer; points to current image)
 
@@ -50,8 +56,8 @@ variable h  ( Dictionary pointer pointer; points to current image)
    create  swap  dup , , ( ptr origin)  dup , ( size)   allot
    does>  h ! ;
 
-( Show current region, or, if unset, say that. Every target should set
-  region to *something* when loading its build.mu4.)
+| Show current region, or, if unset, say that. Every target should set
+| region to *something* when loading its build.mu4.
 
 : .region
    dp  ?if  body> >name type ^  then  ." no region specified" ;
@@ -69,9 +75,9 @@ variable h  ( Dictionary pointer pointer; points to current image)
 : #image  dp  cell+ cell+ @   ( image size) ;
 : 'image  dp  [ 3 cells #] +  ( image address) ;
 
-( If address u< ram origin, assume flash.
-  If address u< ram end, assume ram.
-  Otherwise, assume "bogus", which has initial value "0bee_f00d".)
+| If address u< ram origin, assume flash.
+| If address u< ram end, assume ram.
+| Otherwise, assume "bogus", which has initial value "0bee_f00d".
 
 : choose-image  ( target)  ( find an image based on target addr)
    dup @ram           u< if  drop  flash ^  then
@@ -113,8 +119,8 @@ variable h  ( Dictionary pointer pointer; points to current image)
 : image-!   .debug-w!  image+ lew! ;
 
 
-( ARM quirk - to disasm loads we want to show the loaded value, so we need
-  to do an "out of sequence" load.)
+| ARM quirk - to disasm loads we want to show the loaded value, so we need
+| to do an "out of sequence" load.
 
 defer |@  ( fetch cell from image/target)
 
@@ -174,3 +180,5 @@ forth
 bogus  "0bee_f00d  \m ,
 flash wipe
 ram wipe  ( leaves us in ram!)
+
+.then

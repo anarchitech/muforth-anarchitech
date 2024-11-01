@@ -1,38 +1,38 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading S08 serial chat protocol v2 (peer)
 
-( NOTE: This might seem a bit odd, but this file implements the side of the
-  chat protocol normally implemented by firmware in a target chip! The
-  reason for doing this here, in muforth, is to test out the protocol by
-  having both sides running on the host.)
+| NOTE: This might seem a bit odd, but this file implements the side of the
+| chat protocol normally implemented by firmware in a target chip! The
+| reason for doing this here, in muforth, is to test out the protocol by
+| having both sides running on the host.
 
 hex
 
-( chat2 commands:
+| chat2 commands:
+|
+| 0  Idle       - ignored by chat; force other command loops to return to chat;
+|                 can be used as an Idle
+| 1  Run        - does an RTI - pops stack frame and runs
+| 2  SetHX      - reads two bytes from SCI, writes them into H & X registers
+| 3  GetHX      - writes H then X register to SCI
+| 4  HXtoSP     - sets SP from HX - deprecated, but I'm leaving it in
+| 5  SPtoHX     - sets HX from SP
+| 6  ReadNext   - reads a byte from memory @ HX, writes it to SCI, inc HX
+| 7  WriteNext  - reads a byte from SCI, writes into memory @ HX, inc HX
+|
+| ~~ The following are S08-only commands ~~
+|
+| 8  ReadN      - reads a length from SCI, reads that many bytes from
+|                 memory, and writes them to SCI (S08 only!)
+| 9  FlashNext  - reads a byte from SCI, writes to flash @ HX, inc HX
+|               - calls a routine at @ram that host downloads to device
+| 10  FlashStatus - returns FSTAT
+|                - need this as a way to "ping" the device for the
+|                - completion of long operations, such as erase
 
-  0  Idle       - ignored by chat; force other command loops to return to chat;
-                  can be used as an Idle
-  1  Run        - does an RTI - pops stack frame and runs
-  2  SetHX      - reads two bytes from SCI, writes them into H & X registers
-  3  GetHX      - writes H then X register to SCI
-  4  HXtoSP     - sets SP from HX -- deprecated, but I'm leaving it in
-  5  SPtoHX     - sets HX from SP
-  6  ReadNext   - reads a byte from memory @ HX, writes it to SCI, inc HX
-  7  WriteNext  - reads a byte from SCI, writes into memory @ HX, inc HX
-
- ~~ The following are S08-only commands ~~
-
-  8  ReadN      - reads a length from SCI, reads that many bytes from
-                  memory, and writes them to SCI [S08 only!]
-  9  FlashNext  - reads a byte from SCI, writes to flash @ HX, inc HX
-                - calls a routine at @ram that host downloads to device
- 10  FlashStatus - returns FSTAT
-                 - need this as a way to "ping" the device for the
-                 - completion of long operations, such as erase
-)
 
 
 variable pty-master
@@ -55,8 +55,8 @@ variable spy  spy on
 : swi
    0 fcmd image-c! ( set flash command to 0 - an illegal value) ;
 
-( Emulate S08 stack _exactly_: it pushes _then_ decrements; increments
-  _then_ pops.)
+| Emulate S08 stack _exactly_: it pushes _then_ decrements; increments
+| _then_ pops.
 
 variable peer-sp  ( holds an image address, not a target address!)
 : p.push  ( b)     peer-sp @  dup  1-       peer-sp !  c! ;
@@ -80,8 +80,8 @@ variable peer-sp  ( holds an image address, not a target address!)
 : p.ReadNext     m* >b ;
 : p.WriteNext        b> m& ;
 
-( We send the target zero counts to read 256 bytes, so let's do that here
-  as well.)
+| We send the target zero counts to read 256 bytes, so let's do that here
+| as well.
 
 : p.ReadN    b>  dup 0= if  drop #256  then  for  p.ReadNext  next ;
 

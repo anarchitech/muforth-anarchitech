@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( XXX - this file is probably broken.)
 
@@ -8,8 +8,8 @@
 ld! target/S08/build.mu4
 ld target/S08/chat-host.mu4
 
--- flash
--- @flash org  origin!
+| flash
+| @flash org  origin!
 ram
 
 ld target/S08/7segment.mu4

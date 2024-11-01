@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ld lib/intel-hex.mu4
 
@@ -10,7 +10,7 @@ ld lib/intel-hex.mu4
    0 ihwext  ihwchunks  ihwend ;
 
 ( Support for reading hex files.)
--- ihraddr>host  ( count target base - count host)
+| ihraddr>host  ( count target base - count host)
 -:  +  image+ ;  is ihraddr>host
 
 : read-ihex   token, read-ihex-file ;

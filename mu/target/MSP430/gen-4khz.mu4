@@ -1,44 +1,44 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
-
-( We need to "rescue" a chip that has had its calibration data rudely
-  erased by the BSL. Without this, we cannot run the UART chat code,
-  because we need an accurate 16MHz clock to drive the UART.
-
-  TI published example code - both in assembler and C - do this, but their
-  code requires an external 32768Hz watch battery crystal as the "standard"
-  to calibrate against. They divide it down to 4096Hz, figure out the
-  closest divisors of the target clock, and then run a routine that
-  essentially tries lots of settings to try find one that is close enough.
-
-  They generate calibrations for 1, 8, 12, and 16MHz. Their divisors are
-
-   1MHZ :  244 x 4096Hz = 999.4kHz
-   8MHZ : 1953 x 4096Hz = 7.99MHz
-  12MHZ : 2930 x 4096Hz = 12.00MHz
-  16MHZ : 3906 x 4096Hz = 15.99MHz
-
-  Since I don't have such a crystal, I thought I'd use a second MSP430 -
-  one that still has its calibration data intact - to generate a 4 kHz square
-  wave, and then calibrate against that. Our divisors will be simpler and
-  will divide neatly:
-
-   1MHZ =  250 x 4000Hz
-   8MHZ = 2000 x 4000Hz
-  12MHZ = 3000 x 4000Hz
-  16MHZ = 4000 x 4000Hz
-
-  So I got to dig into the guts of the timers - a feature whose
-  documentation leaves *much* to be desired. I spent several hours trying to
-  make sense of the timers and the example code. I couldn't figure out how it
-  was that they were sampling ACLK - which was being driven by the external
-  watch battery crystal. I finally found, buried in the chip datasheet, a
-  table that describes CCI0B as being connected to ACLK...
-
-  And then the description of the compare registers and how they work was
-  equally inscrutable for a while. I think I understand it now, so here
-  goes.)
+| We need to "rescue" a chip that has had its calibration data rudely
+| erased by the BSL. Without this, we cannot run the UART chat code,
+| because we need an accurate 16MHz clock to drive the UART.
+|
+| TI published example code - both in assembler and C - do this, but their
+| code requires an external 32768Hz watch battery crystal as the "standard"
+| to calibrate against. They divide it down to 4096Hz, figure out the
+| closest divisors of the target clock, and then run a routine that
+| essentially tries lots of settings to try find one that is close enough.
+|
+| They generate calibrations for 1, 8, 12, and 16MHz. Their divisors are
+|
+|  1MHZ :  244 x 4096Hz = 999.4kHz
+|  8MHZ : 1953 x 4096Hz = 7.99MHz
+| 12MHZ : 2930 x 4096Hz = 12.00MHz
+| 16MHZ : 3906 x 4096Hz = 15.99MHz
+|
+| Since I don't have such a crystal, I thought I'd use a second MSP430 -
+| one that still has its calibration data intact - to generate a 4 kHz square
+| wave, and then calibrate against that. Our divisors will be simpler and
+| will divide neatly:
+|
+|  1MHZ =  250 x 4000Hz
+|  8MHZ = 2000 x 4000Hz
+| 12MHZ = 3000 x 4000Hz
+| 16MHZ = 4000 x 4000Hz
+|
+| So I got to dig into the guts of the timers - a feature whose
+| documentation leaves *much* to be desired. I spent several hours trying to
+| make sense of the timers and the example code. I couldn't figure out how it
+| was that they were sampling ACLK - which was being driven by the external
+| watch battery crystal. I finally found, buried in the chip datasheet, a
+| table that describes CCI0B as being connected to ACLK...
+|
+| And then the description of the compare registers and how they work was
+| equally inscrutable for a while. I think I understand it now, so here
+| goes.
 
 ld! target/MSP430/build.mu4  ( sets radix to hex!)
 
@@ -49,19 +49,19 @@ hex
 ram
 
 label scream
-   -- Set up port pin for timer output; TA0.0 on p1.5 (pin 7)
-   -- See p49 of G2553 datasheet.
-   %0010_0000 # P1DIR & bisb        -- p1.5 output
-   %0010_0000 # P1SEL & bisb        -- p1.5 select TA0.0
-   %0010_0000 # P1SEL2 & bicb       --    (ditto)
+   | Set up port pin for timer output; TA0.0 on p1.5 (pin 7)
+   | See p49 of G2553 datasheet.
+   %0010_0000 # P1DIR & bisb        | p1.5 output
+   %0010_0000 # P1SEL & bisb        | p1.5 select TA0.0
+   %0010_0000 # P1SEL2 & bicb       |    (ditto)
 
-   -- set up output square wave @ 4000Hz, assuming 16M SMCLK
-   #1999 # TA0CCR0 & mov            -- Toggle mode period = 2*(TA0CCRO + 1)
-   %1000_0000 # TA0CCTL0 & mov      -- Compare mode, Toggle
+   | set up output square wave @ 4000Hz, assuming 16M SMCLK
+   #1999 # TA0CCR0 & mov            | Toggle mode period = 2*(TA0CCRO + 1)
+   %1000_0000 # TA0CCTL0 & mov      | Compare mode, Toggle
 .ifdef lfo
-   %0010_0000 # BCSCTL3 & bisb      -- ACLK = VLO (12 kHz or so)
-   %0001_0001_0100 # TA0CTL & mov   -- ACLK, /1, Up mode, TACLR
+   %0010_0000 # BCSCTL3 & bisb      | ACLK = VLO (12 kHz or so)
+   %0001_0001_0100 # TA0CTL & mov   | ACLK, /1, Up mode, TACLR
 .else
-   %0010_0001_0100 # TA0CTL & mov   -- SMCLK, /1, Up mode, TACLR
+   %0010_0001_0100 # TA0CTL & mov   | SMCLK, /1, Up mode, TACLR
 .then
   ret ;c

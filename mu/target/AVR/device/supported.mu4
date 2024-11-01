@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading AVR device support:
 
@@ -10,11 +10,10 @@ loading AVR device support:
 : equ     ( offset)  current preserve  equates constant ;
 : vector  ( offset)  equ ;
 : reg     ( offset)  equ ;
-: |  \ -- ;  ( | ignores the bit-fields that follow each register name)
 : aka   .equates. chain' execute ;  ( for making synonyms)
 
-( Given what has been defined, either in a load file or on the command
-  line, we load a file of device-specific "equates".)
+| Given what has been defined, either in a load file or on the command
+| line, we load a file of device-specific "equates".
 
 ( Currently we only have support for atmega devices.)
 
@@ -30,7 +29,7 @@ loading AVR device support:
 .else .ifdef  mega1284  ." 1284"   ld target/AVR/device/mega1284.mu4
 
 .else .ifdef  mega8515  ." 8515"   ld target/AVR/device/mega8515.mu4
-.else  -- default to mega328
+.else  | default to mega328
     -d mega328
     ." 328"  ld target/AVR/device/mega328.mu4
 .then .then .then .then .then .then .then .then .then

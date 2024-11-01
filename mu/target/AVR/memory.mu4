@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading AVR memory
 
@@ -12,23 +12,23 @@ decimal
 
 ld target/common/memory.mu4   ( generic memory image support)
 
-( Three memory aspaces: flash, data [ram + i/o], eeprom.
-
-  Currently every aspace only has one memory image. We use the default of
-  "drop" as our choose-image: since there is only one image per aspace,
-  choose-image is a no-op.)
+| Three memory aspaces: flash, data (ram + i/o), eeprom.
+|
+| Currently every aspace only has one memory image. We use the default of
+| "drop" as our choose-image: since there is only one image per aspace,
+| choose-image is a no-op.
 
 16 make-aspace  ( flash)
 #flash make-image
    dup make-region flash
        make-region boot
 
-( Since ram starts at a non-zero offset into data space - specifically, at
-  @ram - we want to make sure that the ram region - from @ram to @ram #ram +
-  - fits into the ram image, which needs to be a power of 2 in size.
-
-  The easiest way to do this is to take the larger of @ram and #ram - we
-  assume they are both powers of 2! - and double it.)
+| Since ram starts at a non-zero offset into data space - specifically, at
+| @ram - we want to make sure that the ram region - from @ram to @ram #ram +
+| - fits into the ram image, which needs to be a power of 2 in size.
+|
+| The easiest way to do this is to take the larger of @ram and #ram - we
+| assume they are both powers of 2! - and double it.
 
 16 make-aspace  ( data: ram + i/o)
 @ram #ram max 2* make-image  ( ensure that [@ram #ram +] is within the ram image)
@@ -39,15 +39,15 @@ ld target/common/memory.mu4   ( generic memory image support)
    make-region eeprom
 
 
-( Using the bootloader space in AVR parts is awkward. Each part has a
-  *maximum* boot space, which we define as #boot in the equates. By setting
-  bootsz to a value betwee 0 and 3 we can make the boot space *smaller* by
-  shifting it right by bootsz. We put bootsz into the fuses to tell the chip
-  how big a boot space we want.
-
-  The trouble is, what if know how much space we need ahead of time? Then
-  we need to calculate bootsz based on #boot and our *desired* boot space
-  size.)
+| Using the bootloader space in AVR parts is awkward. Each part has a
+| *maximum* boot space, which we define as #boot in the equates. By setting
+| bootsz to a value betwee 0 and 3 we can make the boot space *smaller* by
+| shifting it right by bootsz. We put bootsz into the fuses to tell the chip
+| how big a boot space we want.
+|
+| The trouble is, what if know how much space we need ahead of time? Then
+| we need to calculate bootsz based on #boot and our *desired* boot space
+| size.
 
 .ifdef #boot
    .def #boot-desired  .ndef bootsz  .and .if
@@ -68,149 +68,9 @@ Setting @boot to the end of flash."
 : +a  ( a1 a2 - sum)  +  wrap ;  ( add and wrap to image boundary)
 : image-  ( host - target)  'image -  wrap ;
 
-( Quick hack to generate Intel hex files for flashing via avrdude or
-  similar command-line tools. Using the shell, redirect the output of
-  muforth to a file.)
+| Quick hack to generate Intel hex files for flashing via avrdude or
+| similar command-line tools. Using the shell, redirect the output of
+| muforth to a file.
 
 : ihex-region   region  over image+ -rot  ihwchunks ;
 : gen-ihex   flash ihex-region  boot ihex-region  ihwend ;
-
-
-.ifdef legacy-avr-memory
-
-( Memory images should be stored in the dictionary like strings: prefixed
-  by their length. When we push an image, we push the address of its first
-  byte, but the previous cell countains the count, if we want to do bounds
-  checking or address wrapping.)
-
-variable image  ( image buffer pointer; points to either flash- or eeprom-image)
-
-: make-image  create  ( #bytes)  aligned  dup ,  allot
-              does>  cell+ ( skip count)  image ! ;
-
-( Two real images)
-128 Ki make-image  flash-image
-  4 Ki make-image  eeprom-image
-
-( And two dummy images)
- 8 make-image  ram-image   ( to capture accidental c, or , to ram)
-16 make-image  data-image  ( so "da" when not chatting will show something)
-
-
-: #image  image @  cell- @  ( get byte count) ;
-: 'image  image @           ( get address) ;
-
-: wrap   #image 1-  and ;
-: +a  ( a1 a2 - sum)  +  wrap ;  ( add and wrap to image boundary)
-
-: image+  ( target - host)  wrap  'image + ;
-: image-  ( host - target)        'image -  wrap ;
-
-
-( DEBUG: Define show-comma to show code as it's compiled.)
-.ifdef show-comma
-: .debug-comma  dup  .h8_ ;
-.else
-: .debug-comma ;
-.then
-
-( DEBUG: Define show-c! to show writes to image.)
-.ifdef show-c!
-: .debug-c!   cr  ( byte addr)  2dup .hcell_  .h8 ;
-: .debug-w!   cr  ( word addr)  2dup .hcell_  .hcell ;
-.else
-: .debug-c! ;
-: .debug-w! ;
-.then
-
-: image-c@             image+ c@ ;
-: image-c!  .debug-c!  image+ c! ;
-
-( AVRs are little-endian.)
-: image-@  ( a - w)           image+  leh@ ;
-: image-!  ( w a)  .debug-w!  image+  leh! ;
-
-
-defer >prog ( dump program memory)
-defer >data ( dump data memory)
-defer >ee   ( dump eeprom memory)
-
-: log2  ( n - #bits)
-   0 swap  begin  dup 1 and 0= while  1 u+  u2/  repeat  drop ;
-
-: addrbits  ( size)  log2  |addr ! ;
-
--: ( buf a u)  swap image+ -rot  cmove ;
-: >image-read   [ #]  is |read ;  ( read from current image buffer)
-
-: >image-prog   >image-read   flash-image   #flash addrbits ;
-: >image-data   >image-read    data-image  #ram 2* addrbits ;  ( #ram 100 +)
-: >image-ee     >image-read  eeprom-image  #eeprom addrbits ;
-
-: >image
-   ['] leh@  is |cell@
-              2 |cell !  ( size of cell in bytes)
-
-   ['] >image-prog  is >prog
-   ['] >image-data  is >data
-   ['] >image-ee    is >ee
-
-   >prog  ( default) ;
-
->image
-
-( Dictionary operators.)
-variable 'h   ( image dictionary pointer pointer; points to one of:)
-   2variable 'ram     ( ram pointer, origin)
-   2variable 'app     ( application flash pointer, origin)
-   2variable 'boot    ( bootloader flash pointer, origin)
-   2variable 'ee      ( eeprom pointer, origin)
-   2variable 'sig     ( signature pointer, origin)
-
-: ram     'ram     'h !   ram-image    ;
-: app     'app     'h !   flash-image  ;
-: boot    'boot    'h !   flash-image  ;
-: signature  'sig  'h !   flash-image  ;
-: eeprom  'ee      'h !   eeprom-image ;
-
-: h   'h @ ;  ( get _address_ of current dictionary pointer)
-
-
-( XXX A better name for this? I want origin to return the origin of a
-  space, not set the current space pointer to something...)
-
-: org    ( a) ( set dict pointer)  h ! ;
-
-meta
-( XXX alignment policy? Should , always align? Should allot? Should we even
-  have two spaces? We will never, in this architecture, want to , or c,
-  into ram; we will only need "ram here" and "ram allot".)
-
-: here    ( - a)  h        @ ;
-: origin  ( - a)  h cell+  @ ;
-
-: aligned  1+  -2 and ;
-: align    \m here \m aligned  org ;
-: allot ( n)    h +! ;
-: c,    ( ch)   .debug-comma  \m here image-c!  1 \m allot ;
-: ,     ( w)    ( \m align)  >hilo  \m c, ( lo)  \m c, ( hi) ;
-
-forth
-( return the origin & number of bytes in current region)
-: region  ( - a u)  h 2@  ( origin ptr)  over - ;
-
-( Initialization.)
-: erase  'image #image "ff fill ;  ( erases _current_ image)
-: wipe
-   ram-image erase
-   data-image  "d0d0_dead_d0d0_dead dup  'image 2!
-   eeprom-image erase
-   flash-image erase ;  ( leaves flash-image as _current_ image)
-
-: ram!      ( ram-origin)  dup 'ram   2!  ( set ptr and origin to origin) ;
-: app!      ( app-origin)  dup 'app   2!  ( set ptr and origin to origin) ;
-: boot!    ( boot-origin)  dup 'boot  2!  ( set ptr and origin to origin) ;
-: ee!    ( eeprom-origin)  dup 'ee    2!  ( set ptr and origin to origin) ;
-: sig!      ( sig-origin)  dup 'sig   2!  ( set ptr and origin to origin) ;
-
-.then  ( legacy-avr-memory)

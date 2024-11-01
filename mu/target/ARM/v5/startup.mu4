@@ -1,14 +1,14 @@
 : char   token  drop  c@ ;
 : (    [ char ) #]  parse  2drop ;
 
-( This file is part of muforth: https://muforth.nimblemachines.com/
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
 
-
-( A startup file analogous to muforth's startup file. It expands the
-  capabilities of a bare-bones ARM kernel so that it can be used
-  interactively.)
+| A startup file analogous to muforth's startup file. It expands the
+| capabilities of a bare-bones ARM kernel so that it can be used
+| interactively.
 
 
 ( Make searching vocab chains easier.)
@@ -42,15 +42,15 @@ compiler
 forth
 
 ( A nice way to do full-line comments with no trailing delimiter.)
-: --  ctrl J parse  2drop ;  ( throw away until a newline)
+: |  ctrl J parse  2drop ;  ( throw away until a newline)
 compiler
-: --  \f -- ;
+: |  \f | ;
 forth
 
 
--- -----------------------------------------------------------------------
--- Setting defer'd words and values.
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Setting defer'd words and values.
+| -----------------------------------------------------------------------
 
 ( Fixing up defer'ed words.)
 : now  ' ;
@@ -58,9 +58,9 @@ forth
 : to   is ; ( assigning to values is the same!)
 
 
--- -----------------------------------------------------------------------
--- Support words for compiling control structures.
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Support words for compiling control structures.
+| -----------------------------------------------------------------------
 
 ( Mark a branch source for later fixup.)
 : >mark  ( - src)  here  0 , ;
@@ -98,17 +98,17 @@ compiler
 forth
 
 
--- -----------------------------------------------------------------------
--- Utility.
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Utility.
+| -----------------------------------------------------------------------
 : >     swap <  ;
 : min   2dup >  if swap then  drop  ;
 : max   2dup <  if swap then  drop  ;
 
 
--- -----------------------------------------------------------------------
--- Numeric conversion - input.
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Numeric conversion - input.
+| -----------------------------------------------------------------------
 variable radix    ( the current input & output number base)
 variable dpl      ( decimal point location)
 variable #digits  ( count of digits converted)
@@ -117,13 +117,13 @@ variable #digits  ( count of digits converted)
 
 : radixer  create ,  does> @  radix ! ;
 
-( In order to keep this compilable by the target -before- it knows how to
-  parse numbers - which is what we're defining now! - let's keep the
-  calculated constants. I thought of converting - and in fact started to
-  convert - these to numbers that the -metacompiler- could parse and
-  compile, but that limits us to loading this code -only- via the
-  metacompiler. I like the idea that the target is going to bootstrap
-  itself!)
+| In order to keep this compilable by the target -before- it knows how to
+| parse numbers - which is what we're defining now! - let's keep the
+| calculated constants. I thought of converting - and in fact started to
+| convert - these to numbers that the -metacompiler- could parse and
+| compile, but that limits us to loading this code -only- via the
+| metacompiler. I like the idea that the target is going to bootstrap
+| itself!
 
 2 2* 2* dup 2* ( 16!)  radixer hex
 dup            (  8!)  radixer octal
@@ -140,7 +140,7 @@ decimal
    over if ( still chars to process)  swap >r  over c@  xor if
    ( no match)  r>            0 ^  then  ( return false)
    ( match)     r>  1 -1 v+  -1 ^  then  ( a+1 u-1 true)
-   -- ( end of input)  drop  r> drop ;      ( return to caller's caller!)
+   | ( end of input)  drop  r> drop ;      ( return to caller's caller!)
    ( end of input)  drop 0 ;
 
 : ?sign  char - punct ;
@@ -151,9 +151,9 @@ decimal
         char ' punct  if  octal ^  then
         char % punct  if  binary ^  then ;
 
-( . resets dpl; others leave it unchanged; this means that embedding . in a
-  number causes a double number to be pushed, and dpl set to the count of
-  digits _after_ the _last_ . in the number.)
+| . resets dpl; others leave it unchanged; this means that embedding . in a
+| number causes a double number to be pushed, and dpl set to the count of
+| digits _after_ the _last_ . in the number.
 
 : punctuation
         char . punct  if  dpl off  ^  then
@@ -193,7 +193,7 @@ decimal
    #digits +! ;
 
 : (number)  ( a u - d)
-   -- XXX radix preserve
+   | XXX radix preserve
    >r >r  0 0  r> r>  ?radix  ?sign >r
    #digits off  dpl on
    begin  digits  =while  punctuation  repeat  2drop ( a u)
@@ -215,9 +215,9 @@ now make-number    is number
 now make-literal   is number,
 
 
--- -----------------------------------------------------------------------
--- Numeric conversion - output.
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Numeric conversion - output.
+| -----------------------------------------------------------------------
 : >digit   ( n - ch)  ( convert 1 binary digit to char; hex to uppercase)
    9 over u<  7 and +  char 0  +  ;
 
@@ -229,8 +229,8 @@ now make-literal   is number,
 : abs   ( n - |n|)   s->d  if   negate  then ;
 : dabs  ( d - |d|)   s->d  if  dnegate  then ;
 
-( XXX Should we convert numbers by pushing digits onto the stack
-  instead?)
+| XXX Should we convert numbers by pushing digits onto the stack
+| instead?
 
 ( Longest number we can convert is a negative base-2 double-number.)
 65 aligned allot here constant pad  ( 64 digits + sign + alignment)
@@ -270,9 +270,9 @@ variable hld
 : ?  @ .  ;
 
 
--- -----------------------------------------------------------------------
--- Fancy math operators.
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Fancy math operators.
+| -----------------------------------------------------------------------
 : fm/mod ;  ( UNDEF)
 
 :  */mod  ( n1 n2 n3 - r q)  >r   m*   r>             fm/mod ;
@@ -291,65 +291,65 @@ variable hld
 : umod    ( u1 u2 - umod)   u/mod  drop ;
 
 
--- -----------------------------------------------------------------------
--- Trap frames - for locals, exceptions, and dynamic binding
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Trap frames - for locals, exceptions, and dynamic binding
+| -----------------------------------------------------------------------
 
-( Trying out, after all these years, the techniques that Klaus Schleisiek
-  presented in 1984 [at FORML] and that I read about in 1993.
+| Trying out, after all these years, the techniques that Klaus Schleisiek
+| presented in 1984 (at FORML) and that I read about in 1993.
+|
+| The basic idea is that, in addition to return address pointers
+| (saved IPs), there are stack frames on the return stack. These can be for
+| any purpose, but we're interested here the following: trap frames, local
+| variable storage, and "fluid" rebinding of variables - aka dynamic
+| scoping.
 
-  The basic idea is that, in addition to return address pointers
-  [saved IPs], there are stack frames on the return stack. These can be for
-  any purpose, but we're interested here the following: trap frames, local
-  variable storage, and "fluid" rebinding of variables - aka dynamic
-  scoping.)
-
-( Here is a picture of the return stack, with high memory towards to top of
-  the page, and low memory further down:
-
-  ^   |                    |
-  |   +--------------------+
-  |   |  prev return addr  |
-  |   +--------------------+
-  |   |        ...         |   several cells could be here; depends on the
-  |   +--------------------+   type of frame
-  |   |        ...         |
-  |   +--------------------+
-  |   |   cfa of cleanup   |
-  |   +--------------------+
-  +---+     prev frame     |<--- fp
-      +--------------------+
-      |    ip of remove    |<--- rp      remove just calls unlink
-      +--------------------+                                          )
+| Here is a picture of the return stack, with high memory towards to top of
+| the page, and low memory further down:
+|
+| ^   |                    |
+| |   +--------------------+
+| |   |  prev return addr  |
+| |   +--------------------+
+| |   |        ...         |   several cells could be here; depends on the
+| |   +--------------------+   type of frame
+| |   |        ...         |
+| |   +--------------------+
+| |   |   cfa of cleanup   |
+| |   +--------------------+
+| +---+     prev frame     |<--- fp
+|     +--------------------+
+|     |    ip of remove    |<--- rp      remove just calls unlink
+|     +--------------------+                                          )
 
 variable fp    ( the "top" - most recently pushed - frame)
                ( fp points to a frame ptr, which pts to a frame ptr...)
 
-( link creates a new frame. It fetches the cfa of the following word and
-  pushes it onto the return stack. This is the cleanup routine. Then it
-  links this frame into the list rooted at fp, and then returns to its
-  caller, skipping the following cfa. link is called by a word that builds
-  a new stack frame.)
+| link creates a new frame. It fetches the cfa of the following word and
+| pushes it onto the return stack. This is the cleanup routine. Then it
+| links this frame into the list rooted at fp, and then returns to its
+| caller, skipping the following cfa. link is called by a word that builds
+| a new stack frame.
 
 : link     r> dup @  >r         ( fetch following cfa & push to r)
            fp @ >r  rp@ fp !    ( link this frame to previous)
            cell+ >r             ( skip fetched cfa) ;
 
-( unlink undoes what link did. It unlinks the frame from the list rooted at
-  fp, and then runs the cleanup routine, which will do whatever is
-  necessary to de-allocate the frame and undo any state changes made by the
-  word that called link.)
+| unlink undoes what link did. It unlinks the frame from the list rooted at
+| fp, and then runs the cleanup routine, which will do whatever is
+| necessary to de-allocate the frame and undo any state changes made by the
+| word that called link.
 
 : unlink   r>  ( save return address)
            fp @ rp!  r> fp !    ( unlink frame)
            r> execute           ( execute cleanup word)
            >r  ( restore return address) ;
 
-( unwind is useful in the context of exceptions. It starts at fp and
-  unlinks each frame in turn until fp points to a frame with a zero link.)
+| unwind is useful in the context of exceptions. It starts at fp and
+| unlinks each frame in turn until fp points to a frame with a zero link.
 
 : unwind   r>  ( save return address)
-           -- begin  fp @ @  while  unlink  repeat
+           | begin  fp @ @  while  unlink  repeat
            begin  fp @  while  unlink  repeat
            >r  ( restore return address) ;
 
@@ -359,17 +359,17 @@ create remove  -]  unlink ;   ( remove pushes IP)
 
 ( Now some interesting applications.)
 
--- -----------------------------------------------------------------------
--- Dynamic binding
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Dynamic binding
+| -----------------------------------------------------------------------
 ( Restore saved value of a variable.)
 : restore
    r>  ( ra)
    r> r>  ( a value)  swap  !
    >r  ( ra) ;
 
-( Preserve the value of a variable for the duration of the execution of the
-  calling word.)
+| Preserve the value of a variable for the duration of the execution of the
+| calling word.
 
 : preserve  ( a)  ( address of variable)
    r>  ( ra)
@@ -378,9 +378,9 @@ create remove  -]  unlink ;   ( remove pushes IP)
    >r  ( ra) ;
 
 
--- -----------------------------------------------------------------------
--- Local variable frames
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Local variable frames
+| -----------------------------------------------------------------------
 ( Deallocate local variables.)
 : unroom
    r>  ( ra)
@@ -388,57 +388,57 @@ create remove  -]  unlink ;   ( remove pushes IP)
    >r  ( ra) ;
 
 ( Allocate space for local variables.)
-( NOTE: do -not- try to use a for loop to push cells! It doesn't work! The
-  return stack is being used to store the loop index, but you're busy
-  pushing stuff there! All hell breaks loose! If you absolutely want to
-  zero locals as they are allocated, do a begin/until loop with the count
-  on the data stack.)
+| NOTE: do -not- try to use a for loop to push cells! It doesn't work! The
+| return stack is being used to store the loop index, but you're busy
+| pushing stuff there! All hell breaks loose! If you absolutely want to
+| zero locals as they are allocated, do a begin/until loop with the count
+| on the data stack.
 
 : room  ( #cells)
    r>  ( ra)
    ( allocate, and perhaps initialise)
-   -- swap dup  begin  "55aa55aa >r  1-  dup 0= until  drop
-   -- swap dup  begin  0         >r  1-  dup 0= until  drop
+   | swap dup  begin  "55aa55aa >r  1-  dup 0= until  drop
+   | swap dup  begin  0         >r  1-  dup 0= until  drop
    swap dup  negate rp+!  ( allocate)
    ( #cells)  >r
    link unroom
    remove >r  ( normal return - unlink and cleanup)
    >r  ( ra) ;
 
--- -----------------------------------------------------------------------
--- Trap handlers
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Trap handlers
+| -----------------------------------------------------------------------
 
-( Here is a picture of the return stack, with high memory towards to top of
-  the page, and low memory further down:
-
-  ^   |                    |
-  |   +--------------------+
-  |   |  prev return addr  |    ... trap <trap-type> <handler>  ...
-  |   +--------------------+         |
-  |   | ip of call to trap |---------+
-  |   +--------------------+
-  |   |     saved sp       |
-  |   +--------------------+
-  |   |  trap type <pfa>   |
-  |   +--------------------+
-  |   |    cfa of nope     |   cleanup operation is to do nothing
-  |   +--------------------+
-  +---+     prev frame     |<--- fp
-      +--------------------+
-      |    ip of untrap    |<--- rp
-      +--------------------+                                          )
+| Here is a picture of the return stack, with high memory towards to top of
+| the page, and low memory further down:
+|
+| ^   |                    |
+| |   +--------------------+
+| |   |  prev return addr  |    ... trap <trap-type> <handler>  ...
+| |   +--------------------+         |
+| |   | ip of call to trap |---------+
+| |   +--------------------+
+| |   |     saved sp       |
+| |   +--------------------+
+| |   |  trap type <pfa>   |
+| |   +--------------------+
+| |   |    cfa of nope     |   cleanup operation is to do nothing
+| |   +--------------------+
+| +---+     prev frame     |<--- fp
+|     +--------------------+
+|     |    ip of untrap    |<--- rp
+|     +--------------------+                                          )
 
 ( pop trap type, sp, and ip)
 create untrap  -]  unlink  r> drop  r> drop  r> drop ;
 
-( trap: creates a new trap type, uniquely defined because the value it
-  compiles is its own dictionary address. At runtime it "raises" this trap
-  type, and unwinds the stack to find a matching handler, printing an error
-  message if nothing matched. If it finds a handler, it calls it, but
-  leaves the IP on the return stack that points to the code that -set- the
-  trap, so the whole thing is re-executed until it exits successfully - ie,
-  returns normally without trapping.)
+| trap: creates a new trap type, uniquely defined because the value it
+| compiles is its own dictionary address. At runtime it "raises" this trap
+| type, and unwinds the stack to find a matching handler, printing an error
+| message if nothing matched. If it finds a handler, it calls it, but
+| leaves the IP on the return stack that points to the code that -set- the
+| trap, so the whole thing is re-executed until it exits successfully - ie,
+| returns normally without trapping.
 
 : trap:  create   does>
          begin  fp @  0= if ( XXX ." trapped" )  ^  then
@@ -456,14 +456,14 @@ create untrap  -]  unlink  r> drop  r> drop  r> drop ;
          ;
 
 
--- -----------------------------------------------------------------------
--- Goofy test code
--- -----------------------------------------------------------------------
+| -----------------------------------------------------------------------
+| Goofy test code
+| -----------------------------------------------------------------------
 ( Jump to the outermost frame and "return" to it.)
 : undo  r>  fp @  cell- rp!  >r ;
 
-( Let's talk to the user while these stack frames are set up, so we can
-  dump and debug them.)
+| Let's talk to the user while these stack frames are set up, so we can
+| dump and debug them.
 
 trap: undefined-token
 trap: overflow
@@ -478,7 +478,7 @@ trap: abort
    10 11 12  trap ate-the-stack   -1
    30 40 50  trap overflow         1
    4 room
-   -- token number
+   | token number
    quit
    ( dealloc) ;
 

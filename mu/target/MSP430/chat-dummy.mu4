@@ -1,11 +1,11 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading MSP430 chat (dummy implementation)
 
-( NOTE: All the following d.Foobar commands are the dummy _implementations_
-  of the chat command interface.)
+| NOTE: All the following d.Foobar commands are the dummy _implementations_
+| of the chat command interface.
 
 variable dummy-pc
 variable dummy-flash-status
@@ -21,11 +21,11 @@ variable dummy-flash-status
    @ram dummy-pc !  dummy-flash-status off ;
 
 : d.ReadChunk    ( buf a u)
-   -- cr  ." Dummy read chunk "  2 nth u.  over u.  dup u.
+   | cr  ." Dummy read chunk "  2 nth u.  over u.  dup u.
    push  dummy-image+  swap  pop cmove ;
 
 : d.WriteChunk   ( buf a u)
-   -- cr  ." Dummy write chunk "  2 nth u.  over u.  dup u.
+   | cr  ." Dummy write chunk "  2 nth u.  over u.  dup u.
    push  dummy-image+  pop cmove ;
 
 : d.ErasePage   (     a   - fail?)

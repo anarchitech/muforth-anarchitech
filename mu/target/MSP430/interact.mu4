@@ -1,14 +1,14 @@
-( This file is part of muforth: https://muforth.dev/
-
-  Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading MSP430 interaction
 
 variable chatting
 variable chat-vector
 
-: chat-cmd   ( index - index+1)  dup addrs  constant  1+
-             does> @  chat-vector @ =if  +  addr@ execute  ^  then  2drop
+: chat-cmd   ( index - index+1)  dup cells  constant  1+
+             does> @  chat-vector @ =if  +  @execute  ^  then  2drop
                 error" Not connected to a chat-capable target" ;
 
 : chat-fail   error" Chat command not implemented" ;
@@ -25,18 +25,15 @@ chat-cmd t.FlashChunk   ( buf a u - fail?)
 
 drop  ( last command index)
 
-: >chat
-   ['] t.ReadChunk  is |read    ( read from connected target)
-   ['] leh@         is |cell@
-                    16 |addr !  ( size of addr in bits)
-                     2 |cell !  ( size of cell in bytes) ;
+: >image   ['] read-host-image  ( read from memory image)      du-target ;
+: >chat    ['] t.ReadChunk      ( read from connected target)  du-target ;
 
 : copy-chunk  ( 'target len - 'target+len)
-   -- cr ." copy-chunk "  2dup swap u. u.
+   | cr ." copy-chunk "  2dup swap u. u.
    2dup + push  over image+ -rot t.WriteChunk  pop ;
 
 : copy-chunked  ( a u)
-   -- cr ." copy-chunked "  2dup swap u. u.
+   | cr ." copy-chunked "  2dup swap u. u.
    256 /mod ( r q)  swap push  for   256 copy-chunk  next
                         pop  =if  ( rem) copy-chunk  drop ^  then  2drop ;
 
@@ -50,8 +47,8 @@ variable ram-copied  ( pointer to first un-copied byte)
 
 
 ( Cached local values of target registers.)
-variable .CP     -- context pointer
-variable .SR     -- status register
+variable .CP     | context pointer
+variable .SR     | status register
 variable .SP
 variable .PC
 
@@ -115,23 +112,23 @@ defer verify-quietly
 
 .ifndef chat-v1
 
-( Because the target "caches" the top of the stack in a register, and
-  because the trampoline code loads this register before execution, and
-  pushes it afterward, we can deal only with the "memory image" of the target
-  stack, rather than also worrying about what to put into the "top" register.
+| Because the target "caches" the top of the stack in a register, and
+| because the trampoline code loads this register before execution, and
+| pushes it afterward, we can deal only with the "memory image" of the target
+| stack, rather than also worrying about what to put into the "top" register.
+|
+| What's a bit mystifying is that, to achieve a target stack depth of N,
+| the host has to push N+1 items. The top one goes into top; and the
+| bottom-most one is the "sentinel" value that gets loaded into top when the
+| stack becomes empty.
+|
+| When pushing from the host, or when "pulling" from the target, we don't
+| move more than 8 "user" items - but we pad this value a bit, since we are
+| also using the stack to pass some execution context between host and
+| target.
 
-  What's a bit mystifying is that, to achieve a target stack depth of N,
-  the host has to push N+1 items. The top one goes into top; and the
-  bottom-most one is the "sentinel" value that gets loaded into top when the
-  stack becomes empty.
-
-  When pushing from the host, or when "pulling" from the target, we don't
-  move more than 8 "user" items - but we pad this value a bit, since we are
-  also using the stack to pass some execution context between host and
-  target.)
-
-( If there is space - ram is at least 2 KiB - leave room for vectors at the
-  end of ram, for debugging interrupt-driven code.)
+| If there is space - ram is at least 2 KiB - leave room for vectors at the
+| end of ram, for debugging interrupt-driven code.
 
 meta
 #ram 2 Ki u< .if
@@ -146,18 +143,18 @@ meta
 : depth   \m sp0  \m sp@ -  \m cell/  1- ;
 forth
 
-( When we begin the remote execution of a target Forth word, we have to
-  push to the target, in addition to the values found on the host stack,
-  the IP address of the trampoline, and the cfa to execute. If the code
-  executed hits bug, and we continue execution using cont, we will push the
-  host stack and the IP address of the trampoline, but no cfa.
-
-  In general then, in order to ensure that we can pass up to 8 "user" data
-  values to target code, we need to copy a max of 10 values - plus the cafe
-  sentinel value that is copied no matter what.
-
-  stack> *first* builds a local image of the target stack - in the RAM
-  image - and *then* copies it, in one chunk, to the target.)
+| When we begin the remote execution of a target Forth word, we have to
+| push to the target, in addition to the values found on the host stack,
+| the IP address of the trampoline, and the cfa to execute. If the code
+| executed hits bug, and we continue execution using cont, we will push the
+| host stack and the IP address of the trampoline, but no cfa.
+|
+| In general then, in order to ensure that we can pass up to 8 "user" data
+| values to target code, we need to copy a max of 10 values - plus the cafe
+| sentinel value that is copied no matter what.
+|
+| stack> *first* builds a local image of the target stack - in the RAM
+| image - and *then* copies it, in one chunk, to the target.
 
 : stack>  ( "push" stack to target)
    depth 0 max #10 min
@@ -167,12 +164,12 @@ forth
    ( Now copy stack image to target)
    \m sp@ image+  \m sp@  \m sp0  over -  t.WriteChunk ;
 
-( XXX add a way to automagically sign-extend or zero-extend values coming
-  from the target stack?)
+| XXX add a way to automagically sign-extend or zero-extend values coming
+| from the target stack?
 
-( Since stack< "pops" data stack, plus ip, loop, and if we've defined
-  microscope, w, x, y, and z, let's raise our max so we can copy up to 8
-  "user" values, plus execution context.)
+| Since stack< "pops" data stack, plus ip, loop, and if we've defined
+| microscope, w, x, y, and z, let's raise our max so we can copy up to 8
+| "user" values, plus execution context.
 
 meta
 8 ( user)  2 ( ip and loop) +
@@ -182,8 +179,8 @@ meta
 constant max-pop
 forth
 
-( stack< *first* copies the target stack, in one chunk, to the host's RAM
-  image, and *then* pulls the values out and pushes them onto the host's stack.)
+| stack< *first* copies the target stack, in one chunk, to the host's RAM
+| image, and *then* pulls the values out and pushes them onto the host's stack.
 
 : stack<  ( "pop" stack from target)
    \m depth 0 max \m max-pop min  =if
@@ -197,9 +194,9 @@ forth
       0
    then  drop ;
 
-( Host should set PC -> continue-forth
-                  SP -> top of R stack
-                  CP -> top of D stack)
+| Host should set PC -> continue-forth
+|                 SP -> top of R stack
+|                 CP -> top of D stack
 
 : ?chat
    chatting @ 0= if  error" not connected to target"  then ;
@@ -234,17 +231,17 @@ forth
 .then
 
 
-( Set |@ and |c@ to _some_ form of target fetch. Prefer to get bytes from
-  target if we're connected. This word is useful so we can set an initial
-  state for target's  du  and  dis  so that inspect won't crash when it
-  runs |@ to get a default ea.)
+| Set |@ and |c@ to _some_ form of target fetch. Prefer to get bytes from
+| target if we're connected. This word is useful so we can set an initial
+| state for target's  du  and  dis  so that inspect won't crash when it
+| runs |@ to get a default ea.
 
 : >target  chatting @ if  >chat ^  then  >image ;
 
 
-( Define our own key bindings for memory dumping and disassembly. We'll
-  default to host bindings if there isn't one in our array. This way we
-  only have to define the "delta" between host and target behaviours.)
+| Define our own key bindings for memory dumping and disassembly. We'll
+| default to host bindings if there isn't one in our array. This way we
+| only have to define the "delta" between host and target behaviours.
 
 128 array msp-seekeys
 
@@ -314,8 +311,8 @@ forth
       dup .addr .nesting space
       .target-code  pop .target space  shunt  ^  then ;
 
-( Generic decompiler. Switches modes any time a target word points to
-  current address.)
+| Generic decompiler. Switches modes any time a target word points to
+| current address.
 -: ( a)  ?switch  1dis ;  is 1smart-dis
 -: ( a)  ?switch  1dec ;  is 1smart-dec
 

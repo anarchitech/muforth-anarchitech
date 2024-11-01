@@ -1,12 +1,12 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 loading MSP430 meta-compiler (main)
 
--- ------------------------------------------------------------------------
--- Signatures - how we built the target image
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Signatures - how we built the target image
+| ------------------------------------------------------------------------
 
 meta
 : string,  ( a u)
@@ -29,9 +29,9 @@ meta
 forth
 
 
--- ------------------------------------------------------------------------
--- Forward references for fundamental target kernel words.
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Forward references for fundamental target kernel words.
+| ------------------------------------------------------------------------
 meta
 
 ( These are pointers to target CODE words.)
@@ -49,14 +49,14 @@ variable ^
 
 forth
 
-( Look up a forward-reference variable, and execute it to push its value or
-  address.)
+| Look up a forward-reference variable, and execute it to push its value or
+| address.
 
 : lookup
    .meta. chain' execute ;
 
-( implements should capture the cfa - code field address - of the word it
-  refers to.)
+| implements should capture the cfa - code field address - of the word it
+| refers to.
 
 : implements   \m here  lookup  !  __asm ;
 
@@ -72,9 +72,9 @@ compiler
 forth
 
 
--- ------------------------------------------------------------------------
--- Creating new target names
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Creating new target names
+| ------------------------------------------------------------------------
 
 variable last-code   ( for ;code and does> to fix up)
 
@@ -91,20 +91,20 @@ meta
       i unvectored? if  i  \m handler  ( set it)  then
    \m cell +loop ;
 
-( Create new target names. A name is a target word which is defined as a
-  _constant_ equal to its code field address.)
+| Create new target names. A name is a target word which is defined as a
+| _constant_ equal to its code field address.
 
-( labels are always created in .labels.
-   names are always created in .target.
-
-  Target words annotated with [r] will be moved from .target. to
-  .target-runtime.)
+| labels are always created in .labels.
+|  names are always created in .target.
+|
+| Target words annotated with [r] will be moved from .target. to
+| .target-runtime.
 
 meta
 : [r]   ( mark as "runtime"; move last .target. word into .target-runtime.)
-   .target. addr@  dup addr@  ( last prev)  .target. addr!  ( unlink)
-   .target-runtime. addr@  ( last last-runtime)  over .target-runtime. addr!
-   swap addr! ( link our new word to last-runtime) ;
+   .target. @  dup @  ( last prev)  .target. !  ( unlink)
+   .target-runtime. @  ( last last-runtime)  over .target-runtime. !
+   swap ! ( link our new word to last-runtime) ;
 
 : label   current preserve  .labels. definitions  \m align  \m here  constant  __asm ;
 : name    current preserve  target  \m align  \m here  constant ;
@@ -118,22 +118,22 @@ meta
 : code*   implements  untoken  \m code ;
 
 
-( For forward references. Use hook to define the hook. This creates a label
-  and compiles a long jump. Then resolve using hooks, which patches the jmp
-  to point to here.
-
-  NOTE: the label points at the code *immediately after* the hook, not the
-  hook itself. This makes fixup easier, but can be confusing if you want to
-  disassemble the code for a particular hook!)
+| For forward references. Use hook to define the hook. This creates a label
+| and compiles a long jump. Then resolve using hooks, which patches the jmp
+| to point to here.
+|
+| NOTE: the label points at the code *immediately after* the hook, not the
+| hook itself. This makes fixup easier, but can be confusing if you want to
+| disassemble the code for a particular hook!
 
 forth
 : hook!   ( to from)  \m cell-  image-! ;
 meta
 
-( NOTE: We can't use  asm{  0 #  }  when creating the hook code because
-  that will get converted to a constant generator form! We need to compile
-  a version with space in the following word for the absolute or relative
-  address that will get patched by "hooks".)
+| NOTE: We can't use  asm{  0 #  }  when creating the hook code because
+| that will get converted to a constant generator form! We need to compile
+| a version with space in the following word for the absolute or relative
+| address that will get patched by "hooks".
 
 .ifdef hooks-are-relative
 
@@ -152,29 +152,29 @@ meta
 forth
 
 
--- ------------------------------------------------------------------------
--- Support for ;code and does>
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Support for ;code and does>
+| ------------------------------------------------------------------------
 
-( This word, which is followed inline by a target code address, replaces
-  with the inline target address the code field of the last word compiled .
-  It re-defines the behaviour of a previously defined word - defined by
-  create, variable, constant, etc - by changing its runtime code. It gets
-  -compiled- indirectly by both ;code and does>.)
+| This word, which is followed inline by a target code address, replaces
+| with the inline target address the code field of the last word compiled .
+| It re-defines the behaviour of a previously defined word - defined by
+| create, variable, constant, etc - by changing its runtime code. It gets
+| -compiled- indirectly by both ;code and does>.
 
 : (;code@)   pop @  last-code @  image-! ;
 
 
-( <;code> is used to switch from compiling -host- code [that will later run
-  on the host, and build the target word] to compiling -target- code, that
-  will run when words defined by this defining word later execute. In order
-  to connect the two worlds, and to be able to patch up code fields to
-  point to this newly-defined behaviour, <;code> captures the target's
-  "here" value. Remember, we are about to start compiling target code at
-  "here".
-
-  <;code> runs at the compile time of a defining word, but it leaves it up
-  to its caller - ;code or does> - to change the interpreter mode.)
+| <;code> is used to switch from compiling -host- code (that will later run
+| on the host, and build the target word) to compiling -target- code, that
+| will run when words defined by this defining word later execute. In order
+| to connect the two worlds, and to be able to patch up code fields to
+| point to this newly-defined behaviour, <;code> captures the target's
+| "here" value. Remember, we are about to start compiling target code at
+| "here".
+|
+| <;code> runs at the compile time of a defining word, but it leaves it up
+| to its caller - ;code or does> - to change the interpreter mode.
 
 : <;code>   compile (;code@)  \m here  ,  show ;
 
@@ -184,9 +184,9 @@ definer
 forth
 
 
--- ------------------------------------------------------------------------
--- Control structures.
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Control structures.
+| ------------------------------------------------------------------------
 
 ( Resolve a forward or backward jump, from src to dest.)
 ( When using absolute branch addresses, this is easy: just store dest at src.)
@@ -214,12 +214,12 @@ target-compiler
 : while   ( dest - src dest)  \tc  if  swap ;
 : repeat  ( src dest -)   \tc again  \tc then ;
 
-( NOTE: We only implement the "smart" for that loops 0 times when passed a
-  zero. No more "special case" loops of the form:
-    ?for  blah blah  next  then
-  Now, for compiles ?if followed by the for runtime; next compiles the next
-  runtime, resolves the backwards branch for next, and, lastly, resolves
-  the forward branch from the ?if.)
+| NOTE: We only implement the "smart" for that loops 0 times when passed a
+| zero. No more "special case" loops of the form:
+|   ?for  blah blah  next  then
+| Now, for compiles ?if followed by the for runtime; next compiles the next
+| runtime, resolves the backwards branch for next, and, lastly, resolves
+| the forward branch from the ?if.
 
 ( n for .. next         goes n times; 0 if n=0 )
 
@@ -233,25 +233,25 @@ target-compiler
 forth
 
 
--- ------------------------------------------------------------------------
--- Special versions of host colon compiler
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Special versions of host colon compiler
+| ------------------------------------------------------------------------
 
-( Define useful colon compilers:
-      meta:  for defining new target defining words!
-   definer:  for defining meta-compiler-specific compiling words
+| Define useful colon compilers:
+|     meta:  for defining new target defining words!
+|  definer:  for defining meta-compiler-specific compiling words
+|
+| We will define another colon compiler - the actual target colon - in the
+| kernel, using our meta-defining words!
 
-  We will define another colon compiler - the actual target colon - in the
-  kernel, using our meta-defining words!)
-
-( We need meta: so we can define defining words in the middle of target
-  code - eg, the kernel. It gives us an easy way to fire up a specific
-  colon compiler - the one specifically *tuned* for making target defining
-  words.
-
-  definer: is similar. It runs the same colon compiler as meta: but puts
-  the new word on the .definer. chain. Its use is rather obscure, and hard to
-  explain. ;-)
+| We need meta: so we can define defining words in the middle of target
+| code - eg, the kernel. It gives us an easy way to fire up a specific
+| colon compiler - the one specifically *tuned* for making target defining
+| words.
+|
+| definer: is similar. It runs the same colon compiler as meta: but puts
+| the new word on the .definer. chain. Its use is rather obscure, and hard to
+| explain. ;-)
 
 meta
 : meta:      current preserve  meta     :  __definer-colon ;
@@ -260,20 +260,20 @@ meta
 forth
 
 
--- ------------------------------------------------------------------------
--- Punctuation that changes the compiler state, or creates literals
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Punctuation that changes the compiler state, or creates literals
+| ------------------------------------------------------------------------
 
 meta
-( ' get target word's constant value: its cfa
-  We search runtime words too, so we can du or dis them.)
+| ' get target word's constant value: its cfa
+| We search runtime words too, so we can du or dis them.
 
 : '   .target-runtime. chain' execute ;
 : >body   \m cell+ ;
 : >value  \m >body  image-@ ;
 
-( Make some useful shortcuts for getting the body and value addresses of
-  target words in code words.)
+| Make some useful shortcuts for getting the body and value addresses of
+| target words in code words.
 
 assembler
 : b  ( "body address")  \m '  \m >body ;

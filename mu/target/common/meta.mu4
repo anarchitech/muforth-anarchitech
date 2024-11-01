@@ -1,6 +1,6 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
-
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
 ( meta.mu4 - bits common to all metacompiler targets)
 
@@ -57,8 +57,8 @@ mode __meta
 
 ( XXX we don't even use this yet...)
 0 .if
-( only one that we can't define until we know what it means to make target
-  literals!)
+| only one that we can't define until we know what it means to make target
+| literals!
 -:  ."  (meta-compiling)"  ;
 -:  .meta-compiler. find  if  execute ^  then
            .target. find  if  execute  \m compile, ^  then  \m number \m literal ;
@@ -68,7 +68,7 @@ mode __meta-colon
 ( Common things we'll always want when meta-colon compiling.)
 meta-compiler
 : (     \f ( ;   ( comments are nice!)
-: --    \f -- ;  ( ditto!)
+: |    \f | ;  ( ditto!)
 
 : .if      \ .if   ;  ( and conditional compilation is nice too)
 : .else    \ .else ;
@@ -79,12 +79,12 @@ meta-compiler
 
 forth
 
--- ------------------------------------------------------------------------
--- Everything below this is a CROCK and should be removed!
--- ------------------------------------------------------------------------
+| ------------------------------------------------------------------------
+| Everything below this is a CROCK and should be removed!
+| ------------------------------------------------------------------------
 
--- : inside   meta-compiler ;
--- : .inside.   .meta-compiler. ;
+| : inside   meta-compiler ;
+| : .inside.   .meta-compiler. ;
 
 ( kludge - for conditionals - XXX remove later)
 : .not  not ;

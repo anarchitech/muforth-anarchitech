@@ -1,15 +1,15 @@
-( This file is part of muforth: https://muforth.nimblemachines.com/
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
 
-  Copyright 2002-2023 David Frech. (Read the LICENSE for details.)
-
-( Simple program, based on TI's example code, to calculate the DCO settings
-  required to achieve a 16M, 12M, 8M, or 1M clock.
-
-  The example code used a 32768 Hz watch crystal as the reference source,
-  but I don't have one handy, so I programmed a second - calibrated - MSP430,
-  running at 16M, to generate a 4000Hz signal as a reference source.
-
-  We are capturing using Timer A1, CCI0A, and connecting it to p2.0 - pin 8.)
+| Simple program, based on TI's example code, to calculate the DCO settings
+| required to achieve a 16M, 12M, 8M, or 1M clock.
+|
+| The example code used a 32768 Hz watch crystal as the reference source,
+| but I don't have one handy, so I programmed a second - calibrated - MSP430,
+| running at 16M, to generate a 4000Hz signal as a reference source.
+|
+| We are capturing using Timer A1, CCI0A, and connecting it to p2.0 - pin 8.
 
 ld! target/MSP430/build.mu4  ( sets radix to hex!)
 
@@ -34,10 +34,10 @@ ram
 
 decimal
 
- 250 equ DIV_1M   --  250 x 4000Hz = 1MHz
-2000 equ DIV_8M   -- 2000 x 4000Hz = 8MHz
-3000 equ DIV_12M  -- 3000 x 4000Hz = 12MHz
-4000 equ DIV_16M  -- 4000 x 4000Hz = 16MHz
+ 250 equ DIV_1M   |  250 x 4000Hz = 1MHz
+2000 equ DIV_8M   | 2000 x 4000Hz = 8MHz
+3000 equ DIV_12M  | 3000 x 4000Hz = 12MHz
+4000 equ DIV_16M  | 4000 x 4000Hz = 16MHz
 
 hex
 
@@ -52,8 +52,8 @@ label pulse
    dco-capture c  cp push  dco-capture c  sp )+ cp sub  ret  ;c
 
 label dco-tune
-   %0100_0001_0000_0000 # TA1CCTL0 & mov  -- Rising edge, CCI0A, capture
-   %0000_0010_0010_0100 # TA1CTL & mov    -- SMCLK, /1, continuous, TACLR
+   %0100_0001_0000_0000 # TA1CCTL0 & mov  | Rising edge, CCI0A, capture
+   %0000_0010_0010_0100 # TA1CTL & mov    | SMCLK, /1, continuous, TACLR
    pulse c  TA1CTL & clr  ret  ;c
 
 label tweek
@@ -86,9 +86,9 @@ label save-calibration
 ( Flash results into info segment A)
 ( For now, DCO value to flash is in cp)
 label dco-flash
-   ( In the final version, this code will be running at 1M. Currently we
-     are still running at 16M, so skip this step.)
-   -- FKEY %0100_0010 + # FCTL2 & mov  ( set flash clock to MCLK/3 = 1M/3 = 333kHz)
+   | In the final version, this code will be running at 1M. Currently we
+   | are still running at 16M, so skip this step.
+   | FKEY %0100_0010 + # FCTL2 & mov  ( set flash clock to MCLK/3 = 1M/3 = 333kHz)
 
    clear-locks c
    erase-segment-a c
@@ -96,24 +96,24 @@ label dco-flash
    set-locks j  ;c
 
 label dco-init
-   -- Init input capture pin: p2.0, pin 8
-   -- See G2553 datasheet, p51.
+   | Init input capture pin: p2.0, pin 8
+   | See G2553 datasheet, p51.
    01 # P2DIR & bicb
    01 # P2SEL & bisb
    01 # P2SEL2 & bicb
 
    ret
 
-   -- Return DCO to reset values
+   | Return DCO to reset values
    60 # DCOCTL & movb
    87 # BCSCTL1 & movb
 
-   -- This code is meaningless. Just sayin.
+   | This code is meaningless. Just sayin.
    DIV_16M # cp mov  dco-tune c
    DIV_12M # cp mov  dco-tune c
    DIV_8M # cp mov  dco-tune c
    DIV_1M # cp mov  dco-tune c
 
-   -- Flash results into info segment A
-   -- Set flash clock for 1M MCLK
+   | Flash results into info segment A
+   | Set flash clock for 1M MCLK
    ret  ;c
