@@ -60,8 +60,7 @@ this:
 
 ```
 
-"In fact, muforth can be used to compile _any_ sort of code onto the
-target."
+"In fact, muforth can be used to compile _any_ sort of code onto the target."
 
 ```
 
