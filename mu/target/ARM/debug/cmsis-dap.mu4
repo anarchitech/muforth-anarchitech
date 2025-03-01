@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading CMSIS-DAP support
 
@@ -165,7 +165,11 @@ c251 f002 hid-find-device  ( Keil CMSIS-DAP)  .if  constant cmsis  .else
 |
 |   usbdevs -d
 
-z" /dev/uhid0" open-file-rw   constant cmsis
+| XXX Now that we can use open-file? to *try* to open files, we can "probe"
+| for a uhid device that matches. For now, let's leave this code alone and
+| simply abort if uhid0 doesn't work.
+
+z" /dev/uhid0" r/w open-file? ?abort   constant cmsis
 
 : uread   ( buf len - #read)  cmsis  -rot read ;
 : uwrite  ( buf len)          cmsis  -rot write ;
@@ -324,9 +328,9 @@ variable #xfers
 : AP.Write  ( w sel)    <xfer  AP.Wr  xfer> ;
 
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | These are addresses that go into SELECT.
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 ( AHB-AP registers)
 0000_0000 constant AHB.CSW
 0000_0004 constant AHB.TAR
@@ -350,9 +354,9 @@ variable #xfers
 0100_0004 constant MDM.Control
 0100_00fc constant MDM.IDR
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | These are addresses in the chip's memory map.
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 ( Defines for AHB.CSW)
 | comment %%hardwired%%
 | 0 constant CSW.byte    ( memory bus transaction sizes)
@@ -540,13 +544,16 @@ variable ahb.csw@reset  ( capture this value and use it for later xfers)
 
 ( The interface for the interact code. Implemented by all debug transports.)
 
-: dap.get-status  ( - #retries sp pc)
+| NOTE: "dp" in dap.status and dap.run refers to the target data stack
+| pointer. It has nothing to do with the debug port (DP)!
+
+: dap.status  ( - #retries dp)
    0  | #retries
    begin  halted? 0= while  1 ms  1+ dup #1000 = until
    ( timed out)  halt ( force halt)  then
-   ( success)  #13 readreg  #15 readreg ;
+   ( success)  #13 readreg ;
 
-: dap.run  ( pc sp)      #13 writereg  #15 writereg  run ;
+: dap.run  ( pc dp)  #13 writereg  #15 writereg  run ;
 
 ( XXX Not yet implemented.)
 : dap.flash-begin    chat-fail ;
@@ -555,7 +562,7 @@ variable ahb.csw@reset  ( capture this value and use it for later xfers)
 : dap.program   ( buf a u)  drop 2drop chat-fail ;
 
 : jtag
-   chat-via  dap.hello  dap.get-status  dap.run  dap.read  dap.write
+   chat-via  dap.hello  dap.status  dap.run  dap.read  dap.write
    dap.flash-begin  dap.flash-end  dap.erase  dap.program ;
 
 

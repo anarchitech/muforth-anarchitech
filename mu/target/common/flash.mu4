@@ -1,14 +1,19 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading Core flash programming
 
-( This is currently used by the ARM/v6-m, ARM/v7-m, and RISC-V targets.)
+decimal
 
-| ------------------------------------------------------------------------
+| Since we use the chunk size as a divisor, let's make sure it's non-zero
+| even if we haven't started chatting (which is how it gets set).
+
+256 /chunk !
+
+| -------------------------------------------------------------------------
 | Verifying that host and target images are the same.
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 ( Let's do verify first. That way flash-image can also verify.)
 
 variable noisy-verify?  ( Whether to print differences.)
@@ -23,45 +28,33 @@ variable image-offset   ( offset to apply to host address to get target address)
    dup image+ tuck -  image-offset !
    pad pop ;
 
-( Report differing address.)
-| NOTE: the granularity of the display of addresses can be changed by
-| looking at the bytes of diff and printing which parts have changed.
+variable #grain   | granularity of verify comparisons
+defer    grain@+  | fetch a grain and increment
 
-defer .differs  ( a diff)
+( Words to choose the granularity that you want.)
+: verify-1  1 #grain !  [']   c@+ is grain@+ ;  verify-1  ( default)
+: verify-2  2 #grain !  ['] leh@+ is grain@+ ;
+: verify-4  4 #grain !  ['] lew@+ is grain@+ ;
+
 defer .diff-addr  ( a)
-
-( Peel off chunks of different sizes.)
-: >hilo32  ( n - hi lo32)  dup 32 u>>  swap "ffff_ffff and ;
-: >hilo16  ( n - hi lo16)  dup 16 u>>  swap      "ffff and ;
 
 ( By default, just print the entire differing address.)
 -: ( a)  u. ;  is .diff-addr
 
-( Verify with 4 byte granularity.)
--: ( a diff)  [ cell 4 / #] for  >hilo32 if  over .diff-addr  then  4 u+  next  2drop ;
+| If there was a difference in the last "grain" (byte, halfword, word) that
+| we compared, print the address. Combine the most recent difference (xor)
+| with the running difference (diff), and return the new running difference
+| (diff').
 
-( Verify with 2 byte granularity.)
--: ( a diff)   [ cell 2/ #] for  >hilo16 if  over .diff-addr  then  2 u+  next  2drop ;
-
-( Verify with 1 byte granularity.)
--: ( a diff)           cell for  >hilo if    over .diff-addr  then  1 u+  next  2drop ;
-
-( Words to choose the granularity that you want.)
-: verify-1  [ #] is .differs ;  verify-1  ( default)
-: verify-2  [ #] is .differs ;
-: verify-4  [ #] is .differs ;
-
-( Verify a host cell at a time, for speed and simplicity.)
-: verify-cell  ( diff ha pad - diff' ha+ pad+)
-   @+ push  swap @+ push  xor
-   =if  noisy-verify? @ if
-      r@ cell- image-offset @ +  over  .differs  then then
-   or  pop pop ;
+: ?differs  ( diff xor ha+ - diff')
+   over if  noisy-verify? @ if
+      #grain @ - image-offset @ +  dup .diff-addr  then then  drop  or ;
 
 : verify-chunk  ( diff a u - diff' a+u)
    2dup + push
-   aligned setup-comparison  cell/ for  verify-cell  next  2drop
-   pop ;
+   setup-comparison
+   #grain @ / for  grain@+ push  swap grain@+ push  xor  r@ ?differs  pop pop  next
+   2drop pop ;
 
 | Verify using the same chunk size that we used for flashing; the variable
 | /chunk - which is set by the interact code based on a value received from
@@ -71,13 +64,13 @@ defer .diff-addr  ( a)
    noisy-verify? @ if
       cr ." Verifying " .region space
    then
-   0  ( diff)  region
-   /chunk @  /mod  ( r q)  swap push  for  /chunk @  verify-chunk  next
-                                    pop  =if  ( rem) verify-chunk  drop ^  then  2drop ;
+   0  ( diff)  region  /chunk @  /mod  ( r q)  swap push
+   for  /chunk @  verify-chunk  next  pop
+      =if  ( rem) verify-chunk  drop ^  then  2drop ;
 
 defer verify-regions  ( - diff)
 
-: do-verify  ( - diff)  ?chat  h preserve  verify-regions ;
+: do-verify  ( - diff)  h preserve  verify-regions ;
 
 | Report whether region is empty, or, if non-empty, if it matched or
 | mismatched host region.
@@ -109,61 +102,110 @@ defer verify-regions  ( - diff)
 -: noisy-verify? off  do-verify ;  is verify-quietly
 
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Erasing and programing the flash
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 : program-chunk  ( 'target len)
    cr ."    program "  over u.  dup u.
    over image+ -rot  ( buf 'target len)  t.program ;
 
-.ifdef /page  ( for devices with uniform page size)
+.ifdef /page  ( devices that erase based on a page *address*)
 
 : erase-page  ( 'target)
    cr ."    erase   "  dup u.
    t.erase ;
 
-: erase?  ( 'target - erase?)   [ /page 1- #] and  0= ;
+| Given a target flash address, return true if we should erase this
+| address, and false otherwise.
+
+: erase?  ( 'target - erase?)  [ /page 1- #] and  0= ;
 
 ( Before we program the _first_ byte of a page, we erase the page.)
 : flash-chunk  ( 'target len - 'target+len)
    2dup + push  over erase? if  over erase-page  then  program-chunk  pop ;
 
-.else  ( non-uniform flash; uses sectors rather than pages)
+.else  ( devices that erase based on a page *index*)
 
-: erase-sector  ( sector#)
-   cr ."    erase sector "  dup u.
+| Print *both* the target address *and* the index of the page being erased.
+: erase-page  ( index 'target)
+   cr ."    erase   "  u.  ." (page " dup (u.) type ." )"
    t.erase ;
 
-| Given a flash address, return true if on a sector boundary; also return
-| sector# to erase; else return false.
+| Given a target flash address, return page index and true if we should
+| erase this address, and false otherwise. Every target that uses page
+| indexes for erasure has to define this word:
 
-: erase?  ( 'target - sector# -1 | 0)
-   lookup-flash-sector ;
+| erase?  ( 'target - index -1 | 0)
 
-( Before we program the _first_ byte of a sector we erase the sector.)
+( Before we program the _first_ byte of a page we erase the page.)
 : flash-chunk  ( 'target len - 'target+len)
-   2dup + push  over erase? if  erase-sector  then  program-chunk  pop ;
+   2dup + push  over erase? if  2 nth erase-page  then  program-chunk  pop ;
 
 .then
 
-| Do the programming in chunks; the variable /chunk - which is set by the
-| interact code based on a value received from the debug interface - tells
-| us how big each chunk should be.
+| We do the flash programming in chunks; the variable /chunk - which is set
+| by the interact code based on a value received from the debug interface
+| - tells us how big each chunk should be, but we have to be careful before
+| using it for flashing: if the chunk is bigger than the smallest erase
+| size, or does not divide the erase size evenly, we will miss some page
+| boundaries, and we won't properly erase the chip.
+|
+| Most chips supported by muforth have a uniform page size and erase pages
+| based on the address of the first byte of the page. These chips define
+| /page to be the bytes per flash page, and this is the "smallest" erase
+| size, because it's the *only* erase size!
+|
+| A number of STM32 chips use a page *index* rather than an *address* to
+| specify which page to erase. To my knowledge, the first STM32 family to
+| do this was the F4; in addition to using an index, the pages were
+| different sizes! (Because they were much bigger than the usual STM32 page
+| size (often 1 or 2 KiB) and because of their non-uniform sizes, ST called
+| them *sectors* rather than *pages*).
+|
+| In muforth, the F4 chips do *not* define /page; instead, they define
+| a function that takes a candidate address (a multiple of the chunk size)
+| and tests it to see if it is the first byte of a (non-uniform) page
+| (again, ST called these sectors). If it is, it returns true and the page
+| index.
+|
+| Newer ST families - G0, G4, C0, and H5 (among others, but these are the
+| ones that I have researched) use a page *index* for erasure, but the
+| pages are, once again, of uniform size (often 2 or 8 KiB).
+|
+| If /page is defined, we can use it as the "smallest" erase size. If it
+| isn't defined, do we require every chip family to define a smallest erase
+| size?
+|
+| Of the chips supported by muforth, the only ones that do not define
+| /page are made by ST, and since the smallest page size used by any of the
+| "erase by index" families is 2 KiB, we can use that as the smallest erase
+| size if /page is not defined.
+|
+| On every target, the chunk size *must be* carefully chosen to be equal to
+| or smaller than the smallest erase size, and to divide it evenly. Before
+| flashing anything we check to make sure!
+
+: ?chunk-size
+.ifdef /page /page  .else  2 Ki ( see above)  .then   | smallest erase size
+   /chunk @ /mod ( r q)
+   0= if  drop  error" Chunk size is larger than erase size."  ^  then
+   if  error" Chunk size does not evenly divide erase size."  ^  then
+   ( chunk size is ok) ;
 
 : flash-region
    cr ." Programming " .region
-   region
-   /chunk @  /mod  ( r q)  swap push  for  /chunk @  flash-chunk  next
-                                    pop  =if  ( rem) flash-chunk  drop ^  then  2drop ;
+   region  /chunk @  /mod  ( r q)  swap push
+   for  /chunk @  flash-chunk  next  pop
+      =if  ( rem) flash-chunk  drop ^  then  2drop ;
 
 defer ?flash-check    now nope is ?flash-check  ( default is do nothing)
 defer flash-regions
 defer after-flashing  ( diff)
 
 : flash-image
-   ?chat  h preserve  radix preserve hex  ( print messages in hex)
-   ?flash-check  t.flash-begin  flash-regions  t.flash-end
+   h preserve  radix preserve hex  ( print messages in hex)
+   ?chunk-size  ?flash-check  t.flash-begin  flash-regions  t.flash-end
    noisy-verify? on  verify-regions  after-flashing ;
 
 | Here is a default version of flash-regions for targets with a single
@@ -229,7 +271,7 @@ von-neumann? .if
 | flash.
 
 : load-image
-   token, open-file-ro  ( fd)  dup read-file  ( a u)  rot close-file
+   token, r/o open-file? ?abort  ( fd)  dup read-file  ( a u)  rot close-file
    image-origin  dup choose-image
    2dup swap over +  ( start end)  region!
    ( a u start) image+ swap  cmove ;
@@ -240,7 +282,7 @@ von-neumann? .if
 : save-image
    token, create-file  ( fd)  push
    r@  region  swap image+ swap  write
-   r@ " muforth@" write  r@ dp cell+ ( 'origin) cell write ( start)
+   r@ " muforth@" write  r@ 'region cell+ ( 'origin) cell write ( start)
    pop close-file ;
 
 .then  ( von-neumann)

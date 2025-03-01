@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading STM32F303xC chip
 
@@ -17,9 +17,16 @@ loading STM32F303xC chip
       2 Ki constant /page  ( erase page size)
 
 | This chip uses a "quirky" addressing scheme for the USB ram.
+| XXX Is this f303-specific, or true for the whole f3 family?
 -d 1x16-usb-ram
 
+| load F3 family settings
+ld target/ARM/stm32/f3/family.mu4
+
+| set chip path
+z" target/ARM/stm32/f3/03_c/" constant chip-path
+
 | load peripheral equates etc
-ld target/ARM/stm32/f3/03_c-equates.mu4
+ld target/ARM/stm32/f3/03_c/equates.mu4
 
 ld! target/ARM/processor/cortex-m4.mu4

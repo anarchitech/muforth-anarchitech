@@ -1,7 +1,7 @@
 /*
  * This file is part of muforth: https://muforth.dev/
  *
- * Copyright (c) 2002-2024 David Frech. (Read the LICENSE for details.)
+ * Copyright (c) 2002-2025 David Frech. (Read the LICENSE for details.)
  */
 
 /* error-handling code for muForth */
@@ -42,11 +42,15 @@ void mu_abort()     /* zmsg */
         die((char *)UNHEAPIFY(TOP));
 }
 
+void mu_q_abort()   /* ?abort  ( -1 | zerror 0) */
+{
+    if (POP == 0) mu_abort();
+}
+
 /*
  * abort_zmsg() pushes a pointer to a zero-terminated string, and then
  * calls abort.
  */
-
 void abort_zmsg(const char *zmsg)
 {
     PUSH_ADDR(zmsg);

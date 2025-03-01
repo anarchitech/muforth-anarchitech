@@ -1,0 +1,45 @@
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
+
+
+| We keep a local copy of the target's registers in the same order as they
+| appear in an exception frame.
+|
+| The order, low to high: H CC A X PCH PCL
+
+6 buffer chat-frame  ( local copy of SWI stack frame)
+variable chat-sp     ( current value of target's SP)
+
+: get-regs   chat-frame GetRegs  chat-sp ! ;
+: set-regs   chat-frame SetRegs ;
+
+( These index into our local chat-frame, _not_ into target memory!)
+: chat-reg  ( offset)  constant  does> @  chat-frame + ;  ( self-index)
+00 chat-reg .H
+01 chat-reg .CC
+02 chat-reg .A
+03 chat-reg .X
+04 chat-reg .PC
+04 chat-reg .PCH
+05 chat-reg .PCL
+
+( These are handy.)
+: pc!  .PC beh! ;
+: pc@  .PC beh@ ;
+
+: hx!   >lohi  .H c!  .X c! ;
+: hx@          .H c@  .X c@  hilo> ;
+
+: 4#  # # # # ;
+: .bits8  binary  <#  4#  4#  #> type ;
+: .h16       hex  <#  4#  #> type ;
+
+: .b  ( a)  c@    .h8_ ;
+: .w  ( a)  beh@  .h16  space ;
+
+: .regs
+   radix preserve
+   cr  ." V--HINZC  A  H  X   SP   PC"
+   cr  .CC c@ .bits8 space  .A .b  .H .b  .X .b  chat-sp @ .h16 space  .PC .w ;
+

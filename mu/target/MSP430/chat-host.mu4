@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 .ifndef chat-v1
 loading MSP430 serial chat protocol v2 (host)
@@ -25,10 +25,10 @@ hex
 | 24  ReadWords   - read N words, incrementing as we go
 | 25  WriteWord   - write a word to memory, incr pointer
 | 26  Run         - set the pc in the saved frame, pop the registers and
-|               - saved status, and go
+|                 - saved status, and go
 | 27  FlashWord   - write word to flash, incr pointer
-|               - execute command saved on chat frame
-|               - target returns word-sized flash status
+|                 - execute command saved on chat frame
+|                 - target returns word-sized flash status
 | 28  GetCheck    - get target's checksum value
 | 29  ReadWordsB  - read N words *byte-wise*, incrementing as we go
 |

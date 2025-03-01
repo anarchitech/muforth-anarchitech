@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading STM32F0 Discovery board
 
@@ -9,4 +9,4 @@ ld target/ARM/debug/stlink-v2.mu4
 ld target/ARM/debug/stlink-v2-interact.mu4
 
 flash
-ld target/ARM/stm32/f0/51_8-example.mu4
+| ld target/ARM/stm32/f0/51_8/example.mu4

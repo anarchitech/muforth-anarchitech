@@ -1,0 +1,33 @@
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
+
+loading STM32F411xE chip
+
+"0800_0000 constant @flash
+    512 Ki constant #flash
+
+"2000_0000 constant @ram
+    128 Ki constant #ram
+
+     12 Ki constant #bl-ram  ( ram consumed by bootloader)
+
+| There isn't a single erase page size for this chip! Instead there are
+| pages (ST calls them sectors, but I'm going to call them pages, to be
+| more consistent with the other chip families) of non-uniform size, laid
+| out as follows:
+|
+| 4  16 Ki pages
+| 1  64 Ki page
+| 3 128 Ki pages
+
+| load f4 family settings
+ld target/ARM/stm32/f4/family.mu4
+
+| set chip path
+z" target/ARM/stm32/f4/11_e/" constant chip-path
+
+| load peripheral equates etc
+ld target/ARM/stm32/f4/11_e/equates.mu4
+
+ld! target/ARM/processor/cortex-m4.mu4

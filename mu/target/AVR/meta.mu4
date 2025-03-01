@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading AVR meta-compiler (main)
 
@@ -41,9 +41,9 @@ mode __inline-asm
 mode __meta
 
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Peephole optimiser tags
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 | Tags tell the meta-compiler what kind of special code, if any, was just
 | compiled. Currently used to identify literals and calls, for simple
@@ -69,9 +69,9 @@ mode __meta
    notag
    \m here  swap  for  -2 +a  -1 ( 0ffff) over  image-!  next  \m goto ;
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Macros defining register convention and stack operations
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 ( Support for inline asm in any colon word.)
 compiler
@@ -226,15 +226,13 @@ assembler
 
 | For reading and writing the stack pointer.
 |
-| If you know that interrupts are disabled - eg, right after reset - you
-| can use sp!-iclear instead of sp! .
+| Writing both halves of the stack pointer can only be done with interrupts
+| disabled. Eg, you should do something like this:
+|
+|    SREG g0 in  cli  x sp!  SREG g0 out
 
-: sp!-iclear  ( pair)  ?regpair  asm{  SPH over 1+ out  SPL \f swap    out } ;
-: sp@         ( pair)  ?regpair  asm{  SPL over    in   SPH \f swap 1+ in } ;
-
-: sp! ( pair)
-   ?regpair  dup \a g0 = if drop error" can't use g0 with sp!" then
-   asm{  SREG g0 in  cli  sp!-iclear  SREG g0 out } ;
+: sp!  ( pair)  ?regpair  asm{  SPH over 1+ out  SPL \f swap    out } ;
+: sp@  ( pair)  ?regpair  asm{  SPL over    in   SPH \f swap 1+ in } ;
 
 ( Macros that make sense for Forth:)
 : <dup>   asm{  t dpushw } ;  ( push top onto D stack)
@@ -242,9 +240,9 @@ assembler
 forth
 
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Replicated core kernel, so we can use rcall/rjmp
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 | Since we want to be able to get the most basic kernel words - stack
 | operations and 16-bit math - with an rjmp, let's replicate the core every
@@ -270,9 +268,9 @@ forth
       2dup  over i + ( dest)  swap cmove
    [ 8 Ki #] +loop  2drop ;
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Smart jump and call, tail call elimination
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 assembler
 : c  ( dest)  ( smart call - compile rcall if possible, otherwise call)
@@ -307,9 +305,9 @@ meta
 
 forth
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Literal loading.
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 : load-literal  ( n)
    >hilo  asm{  kl ldi  kh ldi } ;
@@ -333,9 +331,9 @@ meta
 
 forth
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Support for special literal versions of binops, relops, and memory ops
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 | Pop top of D stack into kl and kh just as if they were loaded by
 | load-literal. This is used to make versions of binary operations that
@@ -397,16 +395,16 @@ mode __target-colon
 
 : vectors  ( vector# - offset)  2* ;
 : @vector  ( vector# - addr)  vectors  \m origin  + ;
-: vector,  ( vector# dest)  ( compile rjmp to handler)
-   dp preserve  swap  @vector \m goto  \a rjmp ;
+: vector!  ( addr vector#)  ( go to vector slot, compile rjmp to addr)
+   \m here -rot  @vector \m goto  \a rjmp  \m goto ;
 
 .else
 
 ( Chip has big vectors - each entry is a two-word jmp instruction.)
 : vectors  ( vector# - offset)  4 * ;
 : @vector  ( vector# - addr)  vectors  \m origin  + ;
-: vector,  ( vector# dest)  ( compile jmp to handler)
-   dp preserve  swap  @vector \m goto  \a jmp ;
+: vector!  ( addr vector#)  ( go to vector slot, compile jmp to addr)
+   \m here -rot  @vector \m goto  \a jmp  \m goto ;
 
 .then
 
@@ -420,7 +418,7 @@ mode __target-colon
 : unvectored?  ( vector# - f)  @vector  image-@  "0ffff = ;
 
 meta
-: handler  ( vector#)  \m here  vector,  __asm ;
+: handler  ( vector#)  \m here  swap vector!  __asm ;
 
 ( Set all unset vectors to point to \m here.)
 : default-handler
@@ -435,11 +433,11 @@ forth
 | Initialization of memory images and regions. We need the above vector
 | code to calculate everything.
 
-: erase-image   'image #image "ff fill ;  ( fills *current* image)
+: fill-image  ( byte)  'image #image rot fill ;  ( fills *current* image)
 : wipe
-   ram      @ram region!  erase-image
-   eeprom      0 region!  erase-image
-   boot    @boot region!  erase-image  ( erases entire flash image)
+   ram      @ram region!    0 fill-image
+   eeprom      0 region!    0 fill-image
+   boot    @boot region!  "ff fill-image  ( fills entire flash image)
    flash       0 region!
 
    #vectors vectors \m allot ( "application" starts after vectors) ;
@@ -471,7 +469,7 @@ meta
 | the definitions of hook and hooks in an ifdef similar to the vector code.
 
 : hook    \m label  0 \a jmp  __meta ;
-: hooks   dp preserve  \m here  .labels. chain' execute  \m goto  \a jmp ;
+: hooks   \m here  .labels. chain' execute \m goto  dup \a jmp  \m goto ;
 
 : '  .target. chain' execute ;  ( get target word's constant value)
 
@@ -513,25 +511,35 @@ forth
 : .reg   \ .reg ;
 
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Signatures - how we built the target image
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 meta
 : cr,  #LF \m c, ;  ( add a newline)
 
 : string,  ( a u)
    \m here image+ swap  ( a image u)  dup \m allot  cmove ;
 
-: ,"   char " parse  \m string,  \m cr, ;
+| Store start and length of image signature.
+2variable signature
 
-| Save muforth commit, creation time, and build command. End the signature,
-| and align.
+| Print the signature.
+: .sig  \m signature 2@ type ;
 
+| Start the signature.
+: sig(   ( - a)  \m here image+ ;
+
+| End the signature and align.
+: )sig   \m sig(  0 \m c,  \m align  over - ( a u)  \m signature 2! ;
+
+| Capture a line of text and add it to the signature.
+: sig|   #LF parse  \m string,  \m cr, ;
+
+| Capture build command, creation date, and muforth commit.
 : build-info
-   " muforth-commit: " \m string,  muforth-commit  drop 8  \m string,  \m cr,
-   " creation-date: "  \m string,  clock time"  \m string,  \m cr,
    " build-command: ./muforth "  \m string,  command-line  \m string,  \m cr,
-   0 \m align, ;
+   " creation-date: "  \m string,  clock short-time"  \m string,  \m cr,
+   " muforth-commit: " \m string,  muforth-commit  drop 8  \m string,  \m cr, ;
 
 forth
 
@@ -659,9 +667,9 @@ assembler
 : ;c   __meta ;
 
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Control structures.
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 : <test>               asm{  tl th or ( test) } ;
 : <zbranch>  ( - src)  asm{  0= not if } ;
@@ -698,9 +706,9 @@ meta-compiler
 : +loop   ( src dest)     p, (+loop)  \m >mark  \m <resolve  \mc then ;
 forth
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Switching interpreter modes
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 ( Making [ and ] work, finally.)
 variable saved-state      ( interpreter mode we came from)

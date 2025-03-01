@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading MSP430 flash programming
 
@@ -43,7 +43,7 @@ hex
 
 : ?clobbering-loader
    @boot  \m here  u< not  if ^ then  ( not touching bootloader - Ok)
-   .PC @  @ram  [ @ram #ram + #] within  if ^ then  ( running in RAM - Ok)
+   in-ram? @  if ^ then  ( running in RAM - Ok)
    error" You need to be running a RAM-based version of the chat code in
 order to re-flash it. Consult a local guru. ;-)" ;
 

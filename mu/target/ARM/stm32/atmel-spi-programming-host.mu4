@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading Atmel SPI flash programming (host)
 
@@ -11,7 +11,7 @@ loading Atmel SPI flash programming (host)
 | They are conveniently placed at the start of RAM. We are going to call
 | directly into the stlink support code to read and write the STM32 memory.
 | We can't use the "interact" versions - t.read, t.write, etc - because they
-| will be associated with the 8051 target!
+| will be associated with the AVR or 8051 target!
 
 decimal
 
@@ -76,9 +76,9 @@ variable spy  ( to spy on the protocol)
 
 
 .ifdef avr
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | AVR programming
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 : setup-single  ( avr-cmd addr data)
    pad m !
    rot m& ( cmd)  swap >lohi m& m& ( addr)  m& ( data)
@@ -124,9 +124,9 @@ variable spy  ( to spy on the protocol)
 
 .def at89lp     ( at89lp51/52)
 .def at89lp-ss  ( at89lp828/6440)  .or .if
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | AT89LP programming
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 ( Copy cmd, addr, result placeholder, and count, into pad, and copy to STM32.)
 : setup-bulk  ( len cmd addr - len)
    pad m !

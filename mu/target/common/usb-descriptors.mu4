@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 | Words to make writing USB descriptors easier. These are intended to work
 | with a meta-compiler, and will get compiled into the .meta. chain.
@@ -17,8 +17,8 @@ meta
 
 ( Compile a USB UCS-16LE string descriptor.)
 : ucs16-string,  ( a u)
-   \m here  ( address of length byte)
-   0 \m c, ( length)  3 \m c, ( string descriptor type)
+   \m here  ( address of length byte)  0 \m c, ( length)
+   3 \m c, ( string descriptor type)
    -rot  ( 'len a u)  over + push  ( 'len a)
    begin  dup r@ u< while  utf8@+ swap  \m le,  repeat
    drop  rdrop
@@ -26,7 +26,10 @@ meta
 
 : u"   char " parse  ( a u)  \m ucs16-string, ;
 
-: end-descriptor  ( 'length 'descriptor-start)
+| This is for setting wTotalLength field of a config or class descriptor
+| that contains several other descriptors.
+
+: set-descriptor-length  ( 'length 'descriptor-start)
    \m here  swap -  swap image+ leh! ;
 
 hex

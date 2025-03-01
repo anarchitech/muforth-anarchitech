@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading AVR interaction
 
@@ -15,8 +15,8 @@ variable chat-vector
 
 0
 chat-cmd t.hello         ( - chunk-size)
-chat-cmd t.get-status    ( - cp)
-chat-cmd t.run           ( cp pc)
+chat-cmd t.status        ( - dp)
+chat-cmd t.run           ( pc dp)
 chat-cmd t.read-space    ( buf a u space)
 chat-cmd t.write-data    ( buf a u)
 chat-cmd t.write-eeprom  ( buf a u)
@@ -45,6 +45,7 @@ drop
 | copying RAM contents or programming the flash!
 
 variable /chunk  ( chunk size, as reported by debug interface)
+256 /chunk !  | Prevents mystifying divide-by-zero errors when not chatting
 
 : copy-chunk  ( 'target len - 'target+len)
    | cr ." copy-chunk "  2dup swap u. u.
@@ -55,23 +56,20 @@ variable /chunk  ( chunk size, as reported by debug interface)
    /chunk @  /mod ( r q)  swap push  for   /chunk @  copy-chunk  next
                                     pop  =if  ( rem) copy-chunk  drop ^  then  2drop ;
 
+| XXX wondering if there is any need for this. On von Neumann targets
+| - like ARM, RISC-V, MSP430, and S08 - it's useful to copy over the
+| RAM-resident code, both at chat connect time (via hi) and before
+| executing code on the target.
+|
+| On Harvard targets like AVR, how useful is this?
+
 variable ram-copied  ( pointer to first un-copied byte)
+
 : copy-ram
    h preserve  ram
    ram-copied @  dup 0= if  drop  \m origin  then
    \m here  over -  copy-region
    \m here  ram-copied ! ;
-
-
-( Cached local values of target registers.)
-variable .PC
-variable .CP   ( context pointer - commonly used as a stack pointer)
-
-( XXX Unused currently)
-variable .MRP  ( machine's return stack pointer; XXX hardware stack ptr?)
-
-: get-regs   t.get-status  .CP ! ;
-: set-regs   ( - cp pc)    .CP @  .PC @ ;
 
 | For reading and writing PC values on the stack. Convert a normal address
 | to an "ra" - return address - by shifting right one bit and swapping
@@ -82,158 +80,40 @@ variable .MRP  ( machine's return stack pointer; XXX hardware stack ptr?)
 meta
 : >ra   ( a - ra)  \m cell/  >lohi hilo> ;
 :  ra>  ( ra - a)            >lohi hilo>  \m cells ;
-
 forth
+
+| Useful utility words for printing out register contents after executing
+| code remotely. See mu/target/AVR/register-trampoline.mu4 for an example
+| of a simple trampoline for executing assembler routines.
+
 : 2sp  space space ;
 : 4#   # # # # ;
-: .h16    hex  <#  4#  #> type ;
-: .w   .h16  2sp ;
-: .r   ( addr)  @  .w ;
-
-defer .regs
-
--: radix preserve
-   cr  ."   CP    PC"
-       (  0123  4567 )
-   cr   .CP .r
-              .PC .r ;
-: base-regs  [ #]  is .regs ;  base-regs
-
+: .h16   hex     <#  4#                   #> type ;
+: .b8    binary  <#  4#  char _ hold  4#  #> type ;
+: .w    .h16  2sp ;
 
 defer verify-quietly  ( - diff)
 
-( XXX testing)
-: copy-ram ;  ( replace real one with a dummy no-op.)
-
 : hi
-   chatting on  >chat  t.hello  /chunk !  get-regs  .regs
-   ram-copied off  copy-ram
+   chatting on  >chat  t.hello  /chunk !
 .ifndef noverify  verify-quietly drop  .then
    | now __chatting is __meta  __meta ;  ( XXX why not do this?)
    ;
 
 : chat-via   pop  chat-vector !  hi ;
 
-| XXX ARM interact doesn't set local pc variable; it just passes pc to
-| t.run
+"cafe constant stack-sentinel
+| Put the D stack below the task stacks and watchdog reset count.
+@ram #ram +  256 -  2 -  constant dp0
 
-: run      ( pc)  .PC !  copy-ram  set-regs  t.run ;  ( don't wait for target)
-: runwait  ( pc)  run  get-regs ;                     ( wait for target)
+| Define synonyms for reading and writing target stacks.
+: stack-write  t.write-data ;
+: stack-read   t.read-data ;
 
-: ?chat
-   chatting @ 0= if  error" not connected to target"  then ;
+ld target/common/stacks.mu4
 
-
-| Because the target "caches" the top of the stack in a register, and
-| because the trampoline code loads this register before execution, and
-| pushes it afterward, we can deal only with the "memory image" of the target
-| stack, rather than also worrying about what to put into the "top" register.
-|
-| What's a bit mystifying is that, to achieve a target stack depth of N,
-| the host has to push N+1 items. The top one goes into top; and the
-| bottom-most one is the "sentinel" value that gets loaded into top when the
-| stack becomes empty.
-|
-| When pushing from the host, or when "pulling" from the target, we don't
-| move more than 8 "user" items - but we pad this value a bit, since we are
-| also using the stack to pass some execution context between host and
-| target.
-
-meta
-( Put the D stack below the task stacks and watchdog reset count.)
-: sp0   [ @ram #ram +  256 -  2 - #] ;
-: sp!   .CP ! ;  ( We use CP as the data stack pointer)
-: sp@   .CP @ ;
-: depth   \m sp0  \m sp@ -  \m cell/  1- ;
-forth
-
-| stack> *first* builds a local image of the target stack - in the RAM
-| image - and *then* copies it, in one chunk, to the target.
-
-: stack>  ( "push" stack to target)
-   h preserve  ram  ( so image-related words work)
-
-   depth 0 max 12 min
-   \m sp0  over 1+  \m cells -  dup \m sp! ( top of D stack)  swap
-   for  tuck image-!  \m cell+  next  ( copy each cell as a word to D stack)
-   "cafe swap image-! ( sentinel)
-   ( Now copy stack image to target)
-   \m sp@ image+  \m sp@  \m sp0  over -  t.write-data ;
-
-| stack< *first* copies the target stack, in one chunk, to the host's RAM
-| image, and *then* pulls the values out and pushes them onto the host's stack.
-
-: stack<  ( "pop" stack from target)
-   h preserve  ram  ( so image-related words work)
-
-   \m depth 0 max 12 min  =if
-      push
-      \m sp@ image+  \m sp@  r@ \m cells  t.read-data  ( read target stack)
-      pop
-      \m sp@ over  ( n sp n)
-      for  dup image-@  pop 2push  \m cell+  next ( starting with top, push to R)
-      drop ( sp)
-      for  2pop push  next  ( pop from R to reverse order)
-      0
-   then  drop ;
-
-0 .if  ( copied, for reference, from MSP430)
-
-| Host should set PC -> continue-forth
-|                 SP -> top of R stack
-|                 CP -> top of D stack
-
-: ?chat
-   chatting @ 0= if  error" not connected to target"  then ;
-
-: rechat
-   get-regs  stack<
-.ifdef microscope  ( x0 .. xn ip - y0 .. yn ip loop z y x w')
-   .W !  .X !  .Y !  .Z !
-.then
-   .LOOP !  .IP !  .regs ;
-
-( NOTE: For initial execution of a Forth word, xn is cfa!)
-: continue  ( x0 .. xn ip - y0 .. yn ip loop)
-   ?chat
-   stack>  run  rechat ;
-
-( These are implement'ed by the kernel code.)
-meta
-variable continue-forth
-variable trampoline
-
-: cont    ( )     ( continue forth execution)
-   .IP @  continue ;
-forth
-
--: ( cfa)  ( execute target forth word)
-   p@ continue-forth .PC !
-   \m rp0 .SP !  ( trampoline switches stacks)
-   p@ trampoline  ( ip)  continue ;  is remote
-
-
-.then  ( END MSP430)
-
-
-| XXX AVR code should use target/common/chains, which has all the different
-| interpreter modes too.
-
-.ifdef notyet
-
-( Interacting with a chatty, connected target.)
-
--:  ."  (interacting with target)"  ;
--:
-      .meta. find  if  execute          ^  then  ( labels are in .meta.)
-    .target. find  if  execute  remote  ^  then  ( execute as forth word)
-   .equates. find  if  execute          ^  then
-.ifdef no-number                                 complain ;
-.else                                            number ;
-.then
-mode __target
-
-.then  ( notyet)
+: run      ( pc)                dp@ t.run ;  ( don't wait for target)
+: runwait  ( pc)  run  t.status dp! ;              ( wait for target)
 
 
 | Set |@ and |c@ to _some_ form of target fetch. Prefer to get bytes from

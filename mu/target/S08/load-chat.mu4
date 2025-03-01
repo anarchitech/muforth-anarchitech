@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 | This file loads the byteloader "chat" code. Defining the symbol "in-ram"
 | will load the chat code into RAM instead. This is very useful for
@@ -8,16 +8,12 @@
 
 ld! target/S08/build.mu4  ( sets radix to hex!)
 
-.ifdef in-ram
-   ram
-.else
-   @chat  flash region!
-.then
-
 .reg EPCTL0 .if
    ld target/S08/chat-usb.mu4
-.else .ifndef chat2
-   ld target/S08/chat3.mu4
-.else
+.else .ifdef chat2
    ld target/S08/chat2.mu4
+.else .ifdef chat4               | still slightly experimental
+   ld target/S08/chat4.mu4
+.else                            | chat3 is the default.
+   ld target/S08/chat3.mu4
 .then .then

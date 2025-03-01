@@ -4,7 +4,7 @@ token |  .forth.  (unlinked-name)  <:>  ] (lit) [  trailing
 
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 | This file is muforth/mu/startup.mu4. It contains high-level Forth code
 | necessary to the useful execution of muforth. This file is loaded and
@@ -683,9 +683,9 @@ forth
 : .not  0= ;
 
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Schleisiek-style return stack words.
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 | Trying out, after all these years, the techniques that Klaus Schleisiek
 | presented in 1984 (at FORML) and that I read about in 1993.
@@ -744,9 +744,9 @@ create remove  ]  unlink ;    ( remove pushes IP when executed!)
 
 ( Now some interesting applications.)
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Catch and throw
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 variable cf   ( catch frame pointer)
 
@@ -814,9 +814,9 @@ variable unwinding
    unwinding off ;
 
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Fluid binding (dynamically-scoped variables)
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 ( Restore saved value of a normal cell-sized variable.)
 : restore
    r> ( ra)   r> r>  ( value addr) !   >r ( ra) ;
@@ -832,9 +832,9 @@ variable unwinding
    >r ( ra) ;
 
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Cleanup on return
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 : cleanup
    r> ( ra)   r> ( value)  r>  ( cfa) execute   >r ( ra) ;
 
@@ -865,9 +865,9 @@ variable unwinding
    >r ( ra) ;
 
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Local variable frames
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 ( Deallocate local variables.)
 : unroom
    r> ( ra)
@@ -896,9 +896,9 @@ variable unwinding
 
 forth
 
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | End of fancy R-stack goodies, and back to pedestrian Forth.
-| -----------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 ( Number input)
 variable dpl    ( location of last . )   dpl on ( -1)
@@ -1320,6 +1320,21 @@ forth
 
 : count  ( z" - a u)  dup  cell- @ ;
 
+| Given two strings - both addressed by their first character (and with
+| a count cell preceding this) - create a new string that is
+| a concatenation of them. This is useful for making file paths from two
+| pieces.
+
+: concat  ( z1" z2" - zconcat")
+   count 2push  count r@  over + ( a1 u1 utotal)
+   dup ,  ( count cell for concat'ed string)
+   here  ( string dest address)
+   swap 1+ allot  ( allot space for string, terminator, and padding)
+   0 here cell- !  ( store zero terminator and padding to cell boundary)
+   ( a1 u1 dst)  2dup + push  dup push  swap cmove  ( copy first string)
+   pop ( zconcat")  pop ( dst2)  2pop ( a2 u2)
+   rot swap cmove  ( copy second string) ;
+
 ( Interpreted strings. Strings that return an address always get compiled!)
 : token,  ( - z")          token  scrabble ;  ( useful for compiling filenames)
 : z"      ( - z")   char " parse  scrabble ;
@@ -1385,7 +1400,7 @@ variable lines-read
    decimal
    \ [    ( return to host forth...)
    forth  ( ... and compile into .forth. chain)
-   dup open-file-ro ( z" fd)  dup on-exit close-file
+   dup r/o open-file? ?abort ( z" fd)  dup on-exit close-file
    read-file ( z" a u)
    being-loaded preserve  rot being-loaded !
    line preserve  1 line !
@@ -1456,6 +1471,23 @@ ld lib/ansi-terminal-colors.mu4
 : normal-text   >stderr  ." [0m"  >stdout ;
 
 hex
+| NOTE: These colors work best on a dark background!
+|
+| That's the only way I have used them. They are probably too "white" to be
+| easily visible on a light background.
+|
+| Also, they only work on 24-bit capable terminals! Of course, that
+| includes pretty much anything remotely modern, with one *big* exception:
+| the Mac's built-in Terminal!!
+|
+| I spent some a little time investigating the 6x6x6 color cube (216
+| colors) that are available in "256 color" terminals (and this list
+| *includes* macOS's Terminal) but gave up; there just aren't enough colors
+| available.
+|
+| The fact that this is still a problem at the end of the first quarter of
+| the 21st century is frankly astonishing to me.
+
 93A1A1 ( blue-grey) colorized info-text
 97bcc6 ( cyan) colorized status-text
 bdd64f ( green) colorized delimiter-text
@@ -1754,7 +1786,7 @@ the end of the file.
    .then  type  ."
 
 
-Copyright (c) 2002-2024 David Frech. All rights reserved.
+Copyright (c) 2002-2025 David Frech. All rights reserved.
 muforth is free software; read the LICENSE for details.
 
 Type 'settings' to see a few of muforth's tweakable behaviours.
@@ -1773,7 +1805,7 @@ Type 'settings' to see a few of muforth's tweakable behaviours.
    else drop ( empty string) then
    ."
 
-Copyright (c) 2002-2024 David Frech. http://muforth.dev/
+Copyright (c) 2002-2025 David Frech. http://muforth.dev/
 
 Type 'settings' to see a few of muforth's tweakable behaviours.
 " ;
@@ -1793,7 +1825,7 @@ ld commit.mu4
       build-date ( pushes a string!)
    .then  type
    ."  (https://muforth.dev/)
-Copyright (c) 2002-2024 David Frech (read the LICENSE for details)
+Copyright (c) 2002-2025 David Frech (read the LICENSE for details)
 
 Type 'settings' to see a few of muforth's tweakable behaviours.
 " ;

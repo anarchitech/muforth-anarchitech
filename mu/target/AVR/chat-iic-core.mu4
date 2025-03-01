@@ -1,23 +1,17 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading AVR I2C chat (core)
 
 __meta
 hex
 
-2 var exc-pc  ( captured "exception" pc and sp for catch and throw)
-2 var exc-sp
-
-label catch
-   x popw  x pushw  exc-pc x stw
-   x sp@  2 x adiw ( skip ra)  exc-sp x stw  ret  ;c
-
-label throw
 label restart
-   exc-sp x ldw  x sp!
-   exc-pc x ldw  x pushw  ret  ;c
+   u y movw  1 y sbiw  SPL yl out   | empty stack
+   ( fall thru)  ;c
+
+hook i2c-restart-hook
 
 
 7 equ TWINT  ( bit#)  ( ack after all other actions)
@@ -125,7 +119,7 @@ label serial-init
    ( Set I2C slave address from EEPROM)
    0 z ldiw  read-eeprom-byte rcall  1 invert xl andi  TWAR xl out
 
-.ifdef mega168
+.def mega168  .def mega328  .or .if
    ( Set up SCL/SDA pins as inputs with pullups enabled: PC4 and PC5)
    xl clr  DDRC xl out  30 xl ldi  PORTC xl out
 

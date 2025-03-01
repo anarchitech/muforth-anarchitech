@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading Tiva/Stellaris debug support
 
@@ -44,9 +44,12 @@ hex
 |
 |   usbdevs -d
 
+| XXX Now that we can use open-file? to *try* to open files, we can "probe"
+| for a ugen device that matches. For now, let's leave this code alone and
+| simply abort if ugen0 doesn't work.
 
-z" /dev/ugen0.03" open-file-ro  constant icdi-read
-z" /dev/ugen0.02" open-file-wo  constant icdi-write
+z" /dev/ugen0.03" r/o open-file? ?abort  constant icdi-read
+z" /dev/ugen0.02" w/o open-file? ?abort  constant icdi-write
 
 : uread   ( buf len - #read)  icdi-read   usb-read ;
 : uwrite  ( buf len )         icdi-write  usb-write ;
@@ -211,15 +214,15 @@ forth
    100 ( 256 byte chunk size) ;
 
 ( XXX no waiting until target ready... will this work?)
-: ti.get-status   ( - #retries sp pc)   0  #13 t.getreg  #15 t.getreg ;
-: ti.run    ( pc sp)           #13 t.setreg  t.go ;
+: ti.status   ( - #retries dp)   0  #13 t.getreg ;
+: ti.run      ( pc dp)              #13 t.setreg  t.go ;
 
 ( XXX Not yet implemented.)
 : ti.erase    ( a)  drop chat-fail ;
 : ti.flash    ( buf a u)  drop 2drop chat-fail ;
 
 : jtag
-   chat-via  ti.hello  ti.get-status  ti.run  ti.read  ti.write  ti.erase  ti.flash ;
+   chat-via  ti.hello  ti.status  ti.run  ti.read  ti.write  ti.erase  ti.flash ;
 
 .else  ." No supported USB devices found."
 

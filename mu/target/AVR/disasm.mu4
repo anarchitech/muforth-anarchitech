@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading AVR disassembler
 
@@ -17,10 +17,14 @@ hex
 ( exact match)
 : (exact)  ( op match)  over = ;
 
+: .skip   ( op - op)                       6 spaces ;
+: .op2    ( op - op2 op)  cell*  dup .hcell_ space  swap ;
+
 compiler
 : ..   compile ^  \ then ;
-: match  ( - src)  compile (match)  \ if  \ .op ;
-: exact  ( - src)  compile (exact)  \ if  \ .op ;
+: match   ( - src)  compile (match)  \ if  compile .skip  \ .op ;
+: matchl  ( - src)  compile (match)  \ if  compile .op2   \ .op ;
+: exact   ( - src)  compile (exact)  \ if  compile .skip  \ .op ;
 
 forth
 
@@ -54,13 +58,13 @@ defer .regname
 : .ioa   ( io-addr)  20 +  .eq ;
 
 ( Extracting various fields.)
-: 00r  ( op - op reg)  dup 0f and ;
-: 0r0  ( op - op reg)  dup 4 >>  0f and ;
-: B3  ( op - op bit#)  dup 07 and ;
-: Rd  ( op - op reg)   dup 4 >>  1f and ;
-: Rs  ( op - op reg)   dup 0f and  over 5 >>  10 and  or ;
-: hi  ( reg - reg)     0f and  10 + ;
-: K8  ( op - op k)     dup 4 >> 0f0 and  over 0f and  or ;
+: 00r  ( op - op reg)   dup 0f and ;
+: 0r0  ( op - op reg)   dup 4 >>  0f and ;
+: B3   ( op - op bit#)  dup 07 and ;
+: Rd   ( op - op reg)   dup 4 >>  1f and ;
+: Rs   ( op - op reg)   dup 0f and  over 5 >>  10 and  or ;
+: Rhi  ( reg - reg)     0f and  10 + ;
+: K8   ( op - op k)     dup 4 >> 0f0 and  over 0f and  or ;
 
 | Helpers to print out operands. They all take op and all leave op on the
 | stack.
@@ -69,21 +73,21 @@ defer .regname
 
 : .reg-pair  0r0 2* .r  00r 2* .r ;
 
-: .mul-reg   Rd hi .r  Rs hi .r ;
+: .mul-reg   Rd Rhi .r  Rs Rhi .r ;
 
 : .r-top  ( reg)  7 and #24 + .r ;
 : .mul-top   dup 4 >> .r-top  dup .r-top ;
 
 : .2op    Rd .r  Rs .r ;
 
-: .imm    Rd hi .r  K8 .i ;
+: .imm    Rd Rhi .r  K8 .i ;
 
 : .ea-offset
    Rd .r  ( XXX which side should register be on??)
    dup 7 and  over 7 >> 18 and or  over 8 >> 20 and or  ( op offset) .o
    dup 8 and if  ." ,y" ^  then  ." ,z" ;
 
-: .data-space    Rd .r  cell* .eq ;
+: .data-space   ( op2 op - op)  Rd .r  swap .eq ;
 
 : .stack-reg    Rd .r ;
 
@@ -98,9 +102,9 @@ defer .regname
 
 : .sreg-setclear    4 >>  .sreg-bit ;
 
-: .long-branch
+: .long-branch  ( op2 op - op)
    dup 1 and  over 3 >> 3e and or  10 <<  ( high word)
-   cell* or  2*  dup ea !  .dest ;
+   rot or  2*  dup ea !  .dest ;
 
 : .immw
    dup 4 >>  3 and  2*  #24 +  .r  ( high reg pair)
@@ -181,8 +185,8 @@ forth
 .. d200 8000 match  ld  .ea-offset
 .. d200 8200 match  st  .ea-offset
 
-.. fe0f 9000 match  lds  .data-space
-.. fe0f 9200 match  sts  .data-space
+.. fe0f 9000 matchl  lds  .data-space
+.. fe0f 9200 matchl  sts  .data-space
 
 ( Note: no stm versions of these two instructions!)
 .. fe0f 9004 match  lpm  ( z)   .index
@@ -220,8 +224,8 @@ forth
 .. fe0f 940a match  dec  .1op
 .. fe0f 940b match  *unimplemented*
 
-.. fe0e 940c match  jmp  .long-branch
-.. fe0e 940e match  call .long-branch
+.. fe0e 940c matchl  jmp  .long-branch
+.. fe0e 940e matchl  call .long-branch
 
 .. ff00 9600 match  adiw  .immw
 .. ff00 9700 match  sbiw  .immw
@@ -267,5 +271,5 @@ forth
       dup _addr addr-digits 1+ spaces  .nesting space  ." label " .name_
    then
    dup .addr  dup 2/ .hcell_  .nesting space
-   p !  cell*  ( op)  dup .hcell_  space
+   p !  cell*  ( op)  dup .hcell_
    shred  drop ;

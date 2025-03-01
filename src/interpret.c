@@ -1,7 +1,7 @@
 /*
  * This file is part of muforth: https://muforth.dev/
  *
- * Copyright (c) 2002-2024 David Frech. (Read the LICENSE for details.)
+ * Copyright (c) 2002-2025 David Frech. (Read the LICENSE for details.)
  */
 
 /* Interpreter and compiler */
@@ -261,7 +261,9 @@ void muboot_load_file()    /* c-string-name */
 {
     int fd;
 
-    mu_open_file_ro();
+    mu_r_slash_o();     /* open file readonly */
+    mu_open_file_q();
+    mu_q_abort();
     fd = TOP;
     mu_read_file();
 

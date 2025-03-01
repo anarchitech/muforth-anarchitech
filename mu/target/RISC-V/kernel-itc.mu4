@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading RISC-V Forth kernel
 
@@ -32,9 +32,9 @@ loading RISC-V Forth kernel
 | want to try ITC and see how well - or poorly - it works.
 
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | The kernel begins here!
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 .ifdef native
 

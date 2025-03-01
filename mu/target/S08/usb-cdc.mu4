@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 ( Trying to create a USB CDC serial device.)
 
@@ -128,7 +128,7 @@ label data-class-interface
 .then
 
    ( Fix-up length of configuration descriptor.)
-   config-descriptor  end-descriptor
+   config-descriptor  set-descriptor-length
 
 label config-descriptor-end  ;c
 

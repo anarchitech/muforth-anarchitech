@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading RP2040 PICOBOOT support
 
@@ -31,9 +31,12 @@ hex
 |
 |   usbdevs -d
 
+| XXX Now that we can use open-file? to *try* to open files, we can "probe"
+| for a ugen device that matches. For now, let's leave this code alone and
+| simply abort if ugen0 doesn't work.
 
-z" /dev/ugen0.03" open-file-wo  constant picoboot-write
-z" /dev/ugen0.04" open-file-ro  constant picoboot-read
+z" /dev/ugen0.03" w/o open-file? ?abort  constant picoboot-write
+z" /dev/ugen0.04" r/o open-file? ?abort  constant picoboot-read
 
 ( These are for executing commands over the two bulk endpoints.)
 : uwrite  ( buf len )   picoboot-write  usb-write ;
@@ -88,7 +91,7 @@ h @ ( save region ptr)
 ram
 __meta
 
-here equ pico-sp  cell allot  ( used to call Forth code)
+here equ pico-dp  cell allot  ( used to call Forth code)
 here equ addr     cell allot  ( memory address)
 here equ count    cell allot  ( memory count)
 here equ data     #256 allot  ( memory read/write buffer)
@@ -158,11 +161,11 @@ variable rom-table-lookup
    pi.version
    #256 ;
 
-: pi.get-status   ( - #retries sp pc)
-   0  pad \m pico-sp 4 picoboot.read  pad lew@  "deadc0de ;
+: pi.status   ( - #retries dp)
+   0  pad \m pico-dp 4 picoboot.read  pad lew@ ;
 
-: pi.run      ( pc sp)
-   pad lew!  pad \m pico-sp 4 picoboot.write
+: pi.run      ( pc dp)
+   pad lew!  pad \m pico-dp 4 picoboot.write
    picoboot.exec ;
 
 : pi.read     ( buf a u)
@@ -180,7 +183,7 @@ use a UF2 file instead." ;
 : pi.flash-end ;
 
 : pico
-   chat-via  pi.hello  pi.get-status  pi.run  pi.read  pi.write
+   chat-via  pi.hello  pi.status  pi.run  pi.read  pi.write
              pi.flash-begin  pi.flash-end  chat-fail  chat-fail ;
 
 .then  ( ifdef picoboot)

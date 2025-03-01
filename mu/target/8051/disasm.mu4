@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 loading 8051 disassembler
 
@@ -61,7 +61,7 @@ hex
 | going to worry about a few cells of repeated common code. ;-)
 
 : (exact)   ( op      match - op)
-   exact? if  pop inst@ .inst1  drop     ^  then  pop +           push ;
+   exact? if  pop inst@ .inst1  drop     ^  then  pop cell+       push ;
 
 : (exacto)  ( op      match - op)
    exact? if  pop inst@ .inst1  @execute ^  then  pop cell+ cell+ push ;

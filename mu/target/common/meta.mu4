@@ -1,6 +1,6 @@
 | This file is part of muforth: https://muforth.dev/
 |
-| Copyright 2002-2024 David Frech. (Read the LICENSE for details.)
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
 
 ( meta.mu4 - bits common to all metacompiler targets)
 
@@ -79,9 +79,9 @@ meta-compiler
 
 forth
 
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 | Everything below this is a CROCK and should be removed!
-| ------------------------------------------------------------------------
+| -------------------------------------------------------------------------
 
 | : inside   meta-compiler ;
 | : .inside.   .meta-compiler. ;
