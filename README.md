@@ -53,6 +53,31 @@ putting it on github?"  We're fiendish trolls.  Suck it up cupcake.
 
 Don't use muforth.
 
+### BUT IF YOU DO ...
+
+The key point in the [upstream README](README_nimbleupstream.md) is
+this:
+
+```
+
+"In fact, muforth can be used to compile _any_ sort of code onto the
+target."
+
+```
+
+---
+
+### UPDATE 01 MAR 2025
+
+Fork brought up to speed with main finally as the smoke has cleared for
+a brief moment.  
+
+There are some new things.
+
+There may be breakage.
+
+You have been warned.
+
 ---
 
 ### UPDATE 04 Jan 2024
