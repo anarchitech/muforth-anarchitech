@@ -1,0 +1,245 @@
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
+
+loading MSP430 serial chat v2 (core)
+
+| Taking inspiration from the wildly successful HC08 serial chat protocol.
+|
+| Responds to the following commands. NOTE: these are hex values!
+|
+| 00 - 1f  Idle   - these command bytes are ignored
+|
+| 20  GetVersion  - get the chat protocol version
+| 21  SetAddr     - set the memory address pointer
+| 22  GetSP       - get stack pointer - points to saved regs
+| 23  ReadWord    - read a word from memory, incr pointer
+| 24  ReadWords   - read N words, incrementing as we go
+| 25  WriteWord   - write a word to memory, incr pointer
+| 26  Run         - pop the registers and saved status, and go
+| 27  FlashWord   - write a word to flash, passing command each time
+|                 - return a word of status
+|                 - can be used to initiate an erase, or to write a word
+| 28  GetCheck    - return accumulated checksum to host
+| 29  ReadWordsB  - read N words *byte-wise*, incrementing as we go
+|
+| 2a - ff  Idle   - these command bytes are ignored
+
+
+decimal
+
+assembler
+| The chat code passes back and forth between host and target - but does
+| not otherwise touch - the context pointer, cp. It is used to pass
+| execution context between the host and target. By default we assume it is
+| the first "callee-saved" register, r4.
+
+ 04 reg cp     ( context pointer)
+
+| These are all considered "caller saved" registers. They are scratch.
+| Called code can freely clobber them.
+
+ 12 reg top    ( current accumulator)
+ 13 reg mp     ( memory pointer)
+ 14 reg count  ( word count)
+ 15 reg check  ( checksum accumulator)
+forth
+
+( Tell the disassembler about these register names.)
+-: ( reg)
+   dup 5 u< if  ( low special)
+     2*  z" pcspsrr3cp" +  2 type  ^  then
+          ( 0011223344)
+   dup 12 u< if  ( not special)  ." r" .udec  ^  then
+   12 -  5 *  z" top  mp   countcheck" +  5 -trailing type ;  is .regname
+               ( cccccdddddeeeeefffff)
+
+hex
+
+__meta
+
+| Compile the first 32 bits of the current muforth Git commit.
+| These will always be the first four bytes of the file, so verify can be
+| smart about ignoring them.
+
+label version
+   muforth-commit drop 8 evaluate
+   dup 10 >>  swap  ( high low)  ,  ,
+
+( The commit is followed by a pointer to the chat entry code.)
+label chat-entry-vector   0 ,
+
+| Load the device-specific init code, and device-specific versions of
+| get-byte and put-byte.
+
+.ifdef g2553   ld target/MSP430/device/g2553/chat-support.mu4  .then
+.ifdef fr6989  ld target/MSP430/device/fr6989/chat-support.mu4  .then
+.ifdef f5529   ld target/MSP430/device/f5529/chat-support.mu4  .then
+
+label get-word
+   get-byte c  top push  ( save low byte)
+   get-byte c  top swpb  sp )+ top bis  ( combine high and low)
+   top check xor  ( xor into checksum)  ret  ;c
+
+label get-check
+   check top mov  ( fall thru)  ;c     | zeroes checksum!
+
+label put-word
+   top check xor  ( xor into checksum)
+   put-byte c  top swpb  put-byte j  ;c
+
+label get-version
+   version # mp mov ( address of commit)
+   mp )+ top mov  put-word c
+   mp )+ top mov  put-word j  ;c
+
+label set-addr
+   get-word c  top mp mov  ret  ;c
+
+label get-sp
+   sp top mov  2 # top add  put-word j  ;c
+
+| comment TI-is-a-bunch-of-fucking-liars!
+|
+| NOTE! This routine is a bit tricky. The caller has pushed the address of
+| the per-word routine onto the stack, so to process each word we want to
+| call that routine. Unfortunately the MSP430 documentation _lies_ about how
+| this works... So the call looks a little bit weird. The CPU has already
+| pushed the return address when it computes the destination, so instead of
+| finding the address to call at  sp )  it's one word above this at  2 sp +) .
+|
+| Thanks, TI!
+|
+| TI-is-a-bunch-of-fucking-liars!
+
+label do-words
+   get-byte c  top tst  0!= if  ( if count non-zero)
+      top check xor  ( xor into checksum)  top count mov
+      begin  2 sp +) call  1 # count sub  0= until
+   then  2 # sp add  ret  ;c
+
+label read-words
+   do-words c  ( push address of following code!)  ;c
+
+label read-word
+   mp )+ top mov  put-word j  ;c
+
+.ifndef in-ram
+label read-words-bytewise
+   do-words c  ( push address of following code!)
+   mp )+ top movb  top push  ( save low byte)
+   mp )+ top movb  top swpb  sp )+ top bis  ( combine high and low)
+   put-word j  ;c
+.then
+
+label write-word
+   get-word c  top mp ) mov  2 # mp add  ret  ;c
+
+label run
+   2 # sp add  ( skip return address to chat-entry)
+   cp pop  ( context pointer)  reti  ;c
+
+.equates. .contains FCTL1 .if
+
+| Write a word into flash, using the flash command passed to us by the
+| host. It can be used to erase or program the flash.
+
+label flash-word
+   get-word c  top push          | get value to write
+   get-word c                    | get flash command + key
+   FKEY         # FCTL3 & mov    | clear FLOCK
+   top FCTL1 & mov               | write flash command - must have FKEY!
+   mp ) pop  2 # mp add          | write word and incr pointer
+.ifdef in-ram
+   begin  FBUSY # FCTL3 & bit  0= until
+.then
+   FKEY # FCTL1 & mov            | clear command
+   FCTL3 & top mov               | read status
+   FKEY FLOCK + # FCTL3 & mov    | set FLOCK
+   put-word j  ;c                | return status to host
+
+.else
+
+   error" No way to program the flash. You should probably use chat-v4."
+
+.then
+
+( Dispatch.)
+label command-table
+   ( 20) get-version ,
+   ( 21) set-addr ,
+   ( 22) get-sp ,
+   ( 23) read-word ,
+   ( 24) read-words ,
+   ( 25) write-word ,
+   ( 26) run ,
+   ( 27) flash-word ,
+   ( 28) get-check ,
+.ifdef in-ram
+   ( 29) read-words ,
+.else
+   ( 29) read-words-bytewise ,
+.then
+
+label process
+   get-byte c  ( cmd)
+   top check xor   ( xor into checksum)
+
+   20 # top sub   ( 00 to 1f become large unsigned numbers)
+   process command-table - 2/ # top cmp  u< if
+      top top add  command-table top +) pc mov  ( jump!)
+   then
+
+   ( unknown... ignore!)
+   ret  ;c
+
+( Push registers and start conversing with host.)
+label chat-entry
+   ( call has already pushed PC)
+   sr push  sr clr  ( disable interrupts!)  cp push
+   begin  process c  again  ;c
+
+chat-entry chat-entry-vector image-!  ( patch the vector)
+
+| This creates a slot for the PC which can be replaced with the address of
+| native code to execute. That code can end with a return instruction, which
+| will return to the call to interact below, and then re-enter chat with
+| the same stack layout: a PC slot below a "protective" return address. It's
+| easier to visualize than to explain. ;-)
+
+label interact
+   begin  chat-entry c  again  ;c
+
+Vreset handler
+   | set SP to end of RAM
+   @ram #ram +  # sp mov
+
+.ifndef in-ram  ( the flash-based code already did all this)
+
+   | disable watchdog timer
+   WDTKEY 80 + # WDTCTL & mov
+
+   | Do device-specific init.
+   device-init c
+
+   | Initialize the UART.
+   uart-init c
+
+.then  ( not in-ram)
+
+   | This is here so that native code can simply return and it will
+   | re-enter the chat code with a proper stack.
+
+   begin  interact c  again  ;c
+
+
+| If possible, set a BSL flag to _not_ mass erase if wrong password entered
+| during BSL "hello" sequence.
+
+here
+.equates. .contains Vbslkey .if
+Vbslkey goto  0 ,
+.else .equates. .contains Vbslsig1 .if
+Vbslsig1 goto  0aaaa dup , ,  ( sig1 and sig2)
+.then .then
+goto

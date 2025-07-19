@@ -10,142 +10,44 @@ hex
 | define a 16-bit Forth kernel for the PIC18. This will also let us test
 | out ideas about executing code, trampolines, etc.
 
-meta
-: name   current preserve  .target. definitions  \m here constant ;
-: code   \m name  __asm ;
-: :      \m name  __target-colon ;
-
-( Compiling target words.)
--: ( cfa)  \a c  ( compile a call instruction) ;  is target-compile,
-
-: '  .target. chain' execute ;
-: __host  \c [ ;
-
-target-compiler
-: ;  \a ret  __meta ;  ( super simple; no tail-call conversion yet)
-
-compiler
-: asm{   __inline-asm ;  ( start assembling a macro)
-: }      ] ;  ( exit assembler mode and restart host colon compiler)
-
-| We are going to use FSR2 to point to the data stack.
-|
-| Since FSRs can only be used to implement an empty descending stack -
-| where the FSR points to the byte *below* the last byte pushed - we adjust
-| the offset here and in the disassembler so that it's easier to think about.
-| In other words, we make it *look* like a full descending stack, where
-| offset 0 points *at* the last byte pushed.
-|
-| To distinguish this behavior from the machine's inherent behavior, we
-| print the stack pointer as "sp" rather than "z", and we *specify* offsets
-| in the assembler using ",sp".
-
-assembler
-| These are the three 16-bit pointer registers - implemented as register
-| pairs - on the PIC18.
-
-aka FSR0       equ DP   ( data pointer)
-aka FSR0H      equ DPH  ( data pointer, high byte)
-
-aka FSR1       equ AP   ( auxiliary pointer)
-aka FSR1H      equ APH  ( auxiliary pointer, high byte)
-
-aka FSR2       equ SP   ( stack pointer)
-aka FSR2H      equ SPH  ( stack pointer, high byte)
-
-aka POSTINC0   equ @dp+  ( read a data memory location, incr pointer)
-
-aka POSTDEC1   equ @ap-  ( push a byte to aux stack)
-aka PREINC1    equ @+ap  ( pop a byte from aux stack)
-
-aka POSTDEC2   equ @sp-  ( push a byte to data stack)
-aka PREINC2    equ @+sp  ( pop a byte from data stack)
-
-( Move byte and move word.)
-: mov   ( from to)  asm{  \f swap ld  st } ;
-: movw  ( from to)  asm{  \f 2dup mov  1 1 v+  mov } ;
-
-( Adjusts offset by 1 since stack is empty descending.)
-: ,sp  ( offset)  1+ \a ] ;
-
-( Push and pop of aux stack.)
-: apush  asm{  @ap- )           mov } ;
-: apop   asm{  @+ap )  \f swap  mov } ;
-
-( Push and pop of data stack.)
-: dpush  asm{  @sp- )           mov } ;
-: dpop   asm{  @+sp )  \f swap  mov } ;
-
-forth
-( Define a stack slot.)
-: slot  ( offset)  constant  does> @  \a ,sp ;
-
-assembler
-( Offsets 0 and 1 are scratch space.)
-0 slot X    ( low byte of Scratch)
-1 slot XH   ( high byte of Scratch)
-
-2 slot T    ( low byte of Top)
-3 slot TH   ( high byte of Top)
-
-4 slot S    ( low byte of Second)
-5 slot SH   ( high byte of Second)
-forth
-
-: .slot  ( offset)
-   dup 6 u< if  2* z" X XHT THS SH" +  2 type  ^  then
-   .hex  ."  ,sp" ;
-
-| Adjust the offset in the the disassembler, and if possible, print
-| mnemonic name for the stack slot.
-
--: ( offset)  7f and  1-  .slot ;  is .sp-off
-
 __meta
 
 ( 1 byte literal; high byte is zero)
-label lit00   XH clr  ( fall thru)  ;c
-label lit      X st   ( fall thru)  ;c
+label lit00   SH clr  ( fall thru)  ;c
+label lit      S st   ( fall thru)  ;c
 label 1push   2 SP suba  ret  ;c
 
 ( 1 byte literal; high byte is ff)
-label litff   XH set  lit j  ;c
+label litff   SH set  lit j  ;c
 
-__host
+| NOTE: We use \m compile, instead of the assembler's c (smart call) so
+| that the calls will be tagged and can be tail-call converted if a word
+| ends with a literal.
 
-( XXX Use these?)
-: u8?  ( u - flag)  100 u< ;  ( if unsigned value fits in 8 bits)
-: s8?  ( n - flag)  80 + u8? ;  ( if signed value fits in 8 bits)
-
-meta
-: literal
-   dup  8 >>
-   dup   0= if  ( high 8 bits all 0)  drop  asm{  ldi  lit00 c }  ^  then
-       -1 = if  ( high 8 bits all 1)        asm{  ldi  litff c }  ^  then
-   >lohi  asm{  ldi  XH st  ldi  lit c } ;
-forth
-.meta. chain' literal is target-literal
-
-__meta
+-:m ( literal)
+   >lohi  0ff and
+   dup    0= if  ( high 8 bits all 0)  drop  asm{  ldi  lit00 compile, }  ^  then
+   dup 0ff = if  ( high 8 bits all 1)  drop  asm{  ldi  litff compile, }  ^  then
+   asm{  ldi  SH st  ldi  lit compile, } ;  is target-literal
 
 ( Arith/logic 1ops.)
-code negate   T neg  0 ldi  TH rsbb  ret  ;c
-code invert   T com  TH com  ret  ;c
+code negate   0 ldi  T neg  TH rsbb  ret  ;c
+code invert          T com  TH com   ret  ;c
 
-code 2*   0 ( C) STATUS ) bclr          T rlc  TH rlc  ret  ;c
-code u2/  0 ( C) STATUS ) bclr  begin  TH rrc   T rrc  ret  ;c
-code 2/   TH w rlc  ( sign -> C)   again  ;c
+code 2*   0 ( C) STATUS ) bclr            T rlc  TH rlc  ret  ;c
+code 2/   TH w rlc  ( sign -> C)  begin  TH rrc   T rrc  ret  ;c
+code u2/  0 ( C) STATUS ) bclr    again  ;c
 
 ( Arith/logic 2ops.)
-code +      T ld  S add  TH ld  SH adc  ( fall thru)  ;c
+code +      T ld  U add  TH ld  UH adc  ( fall thru)  ;c
 label 1pop  2 SP adda  ret  ;c
 
 code bic    ' invert c  ( fall thru)  ;c
-code and    T ld  S and  TH ld  SH and  1pop j  ;c
-code or     T ld  S or   TH ld  SH or   1pop j  ;c
-code xor    T ld  S xor  TH ld  SH xor  1pop j  ;c
+code and    T ld  U and  TH ld  UH and  1pop j  ;c
+code or     T ld  U or   TH ld  UH or   1pop j  ;c
+code xor    T ld  U xor  TH ld  UH xor  1pop j  ;c
 
-code -      T ld  S sub  TH ld  SH sbb  1pop j  ;c
+code -      T ld  U sub  TH ld  UH sbb  1pop j  ;c
 
 ( Comparisons and tests.)
 label true   T set  TH set  ret  ;c
@@ -153,52 +55,148 @@ label false  T clr  TH clr  ret  ;c
 
 code 0=   T ld  TH or   false 0= until  true j  ;c
 code 0<         TH tst  false 0< until  true j  ;c
-code u<  ' - c          false u< until  true j  ;c
+code u<   ' - c         false u< until  true j  ;c
 
 ( Stack ops.)
-__host
+:tc drop   asm{  2 SP adda } ;  ( make drop a macro!)
 
-target-compiler
-: drop   asm{  2 SP adda } ;  ( make drop a macro!)
-forth
-
-__meta
-
-code dup   ( a   - a a)    TH XH mov  T ld  lit j  ;c
-code over  ( a b - a b a)  SH XH mov  S ld  lit j  ;c
+code dup   ( a   - a a)    TH SH mov  T ld  lit j  ;c
+code over  ( a b - a b a)  UH SH mov  U ld  lit j  ;c
 
 ( Permutations are more involved!)
-code swap  ( a b - b a)     T  X mov   S  T mov   X  S mov
-                           TH XH mov  SH TH mov  XH SH mov  ret  ;c
+code swap  ( a b - b a)    T S movw  U T movw  S U movw  ret  ;c
 
 : nip   ( a b - b)      swap drop ;
 : tuck  ( a b - b a b)  swap over ;
 
+( Memory ops. These operate on the data space: ram and i/o registers.)
+label !dp   T DP ) movw  ret  ;c
+
+code @    !dp c  @dp+ ) T mov  @dp+ ) TH mov  ret  ;c
+code c@   !dp c  @dp+ ) T mov         TH clr  ret  ;c
+
+code !    !dp c  U     @dp+ ) mov  UH     @dp+ ) mov  ( fall thru)  ;c
+label 2pop                                    4 SP adda  ret  ;c
+
+code +!   !dp c  U ld  @dp+ ) add  UH ld  @dp+ ) adc  2pop j  ;c
+code c!   !dp c  U     @dp+ ) mov                     2pop j  ;c
+
+| XXX What would Forth-style @+ look like? It would be nice to have words
+| that stored a pointer into DP and then used it over and over without
+| having to keep it on the stack and continually store T into DP.
+
+code @dp   DP ) S movw  1push j  ;c
+
+| These are not the most efficient, but I think they will work! There is
+| something to be said for doing things the "bog standard" Forth way. ;-)
+
+: @+   @ @dp ;
+: !+   ! @dp ;
+
+( Fetching from program memory.)
+code !p-2*  ( shifted-addr)  ( write progmem ptr from shifted address)
+   0 ( C) STATUS ) bclr  ( clear carry)
+   T  w rlc  PGMADR  ) st
+   TH w rlc  PGMADRH ) st
+   PGMADRU ) clr  PGMADRU ) rlc  1pop j  ;c
+
+code !plo  ( w)  ( write low 16 bits of progmem ptr)
+   T PGMADR ) movw  1pop j  ;c
+
+code !phi  ( b)  ( write high 6 bits of progmem ptr)
+   T PGMADRU ) mov  1pop j  ;c
+
+code @p-2/  ( - shifted-addr)  ( read progmem ptr; conv to shifted address)
+   PGMADRU ) w rrc  ( low bit into carry)
+   PGMADRH ) w rrc  SH st
+   PGMADR  ) w rrc  S  st  1push j  ;c
+
+code @plo  ( w)  ( read low 16 bits of progmem ptr)
+   PGMADR ) S movw  1push j  ;c
+
+code @phi  ( b)  ( read high 6 bits of progmem ptr)
+   PGMADRU ) S mov  SH clr  1push j  ;c
+
+| Read and write as double numbers.
+code @p22
+   4 SP suba
+   PGMADR  ) U movw
+   PGMADRU ) T mov  TH clr  ret  ;c
+
+code !p22
+   T PGMADRU ) mov
+   U PGMADR  ) movw  2pop j  ;c
+
+code +p  ( offset)  ( add an offset to progmem ptr)
+   TH w rlc   WREG ) sbb  WREG ) com  S st   | sign extend TH into S
+   T  ld  PGMADR  ) add
+   TH ld  PGMADRH ) adc
+   S  ld  PGMADRU ) adc  1pop j  ;c
+
+| Fetch a word from program memory; incr memptr
+code p@+
+   prog@+ PGMDAT ) S  mov
+   prog@+ PGMDAT ) SH mov  1push j  ;c
+
+| Fetch a byte from program memory; incr memptr
+code pc@+
+   prog@+ PGMDAT ) S  mov  SH clr  1push j  ;c
+
 ( Return stack.)
+
+| These "expose" the creation of R stack slots to Forth code. Do we want
+| this?
+:tc +r  ( push a new R slot)  asm{  push  } ;
+:tc -r  ( pop an R slot)      asm{  pop  } ;
+
 | XXX This is experimental, and probably won't survive. I'm likelier to use
 | *another* stack - pointed to by AP - aka FSR1 - instead.
 
-code >r
-   TOSU ) dpush  TOSH ) dpush  TOSL ) dpush  ( save ra)
-   T 3 + TOSL ) mov  TH 3 + TOSH ) mov  ( move D stack top to R stack top)
-   push
-   TOSL ) dpop  TOSH ) dpop  TOSU ) dpop  ( restore ra)
-   1pop j  ;c
+| NOTE: r! and r@ ignore TOSU.
+| XXX r! and r@ should be in target-runtime.
 
-code r>
-   TOSU ) dpush  TOSH ) dpush  TOSL ) dpush  ( save ra)
-   pop
-   TOSL ) X 3 + mov  TOSH ) XH 3 + mov  ( move top of R stack to scratch)
-   TOSL ) dpop  TOSH ) dpop  TOSU ) dpop  ( restore ra)
-   1push j  ( make scratch new top)  ;c
+code r!  | To implement >r, caller does push, then calls this
+   STKPTR ) dec  T TOS ) movw  STKPTR ) inc  1pop j  ;c
 
-code r@
-   TOSU ) dpush  TOSH ) dpush  TOSL ) dpush  ( save ra)
-   pop
-   TOSL ) X 3 + mov  TOSH ) XH 3 + mov  ( move top of R stack to scratch)
-   push
-   TOSL ) dpop  TOSH ) dpop  TOSU ) dpop  ( restore ra)
-   1push j  ( make scratch new top)  ;c
+code r@  | To implement r>, caller calls this, then does pop
+   STKPTR ) dec  TOS ) S movw  STKPTR ) inc  1push j  ;c
+
+:d tcompile   \c \t  compile target-compile, ;
+
+:tc >r   \tc +r  tcompile r!  ;
+:tc r>           tcompile r@  \tc -r  ;
+
+| We can also move "compressed" (shifted by one bit) return addresses to
+| and from the R stack. This assumes a flash size of 128Ki or less!
+
+code ra!
+   STKPTR ) dec
+   0 ( C) STATUS ) bclr
+      T w rlc  TOS  ) st
+     TH w rlc  TOSH ) st
+   TOSU ) clr  TOSU ) rlc
+   STKPTR ) inc  1pop j  ;c
+
+code ra@
+   STKPTR ) dec
+   TOSU ) w rrc
+   TOSH ) w rrc  SH st
+   TOS  ) w rrc  S  st
+   STKPTR ) inc  1push j  ;c
+
+code dr!  ( double r store)
+   STKPTR ) dec
+   U TOS ) movw  T TOSU ) mov
+   STKPTR ) inc  2pop j  ;c
+
+code dr@  ( double r fetch)
+   STKPTR ) dec  4 SP suba
+   TOS ) U movw  TOSU ) T mov  TH clr
+   STKPTR ) inc  ret  ;c
+
+( rot will test >r and r>.)
+: ra-test  +r  c597 ra! ra@  795c ra! ra@  -r ;
+: ra-test-2  +r  c597 ra! dr@  795c ra! dr@  e781 3b dr! ra@  -r ;
 
 ( These definitions are from fig-FORTH.)
 : rot   ( a b c - b c a)  >r swap  r> swap ;
@@ -208,51 +206,40 @@ code r@
 : lits  34 f00 -23 -4fa ;
 
 ( R stack test.)
-: rr  1122 >r r@ r>  r@ ( lo 16 of return addr) ;
+| : rr  1122 >r r@ r>  r@ ( lo 16 of return addr) ;
 
-
-( Once we figure out how this should work, we can put it into chat.)
-
-| XXX except for the uses of 0 ,z to hold temp values, z could be used as
-| the data ptr instead of x; then we wouldn't need to copy the ptrs back
-| and forth.
+| XXX just to test how inc and dec change the flags.
+code 100+  TH inc  ret  ;c
+code 100-  TH dec  ret  ;c
 
 label trampoline
-   ( Host has put SP into DP. We need to move it to SP.)
-   DP ) SP ) movw
-
    | Since current PIC18-Q devices max out at 128 Ki of flash, we can fit
    | the PC into one stack slot by shifting it *right* one bit. While
    | setting the latches for the indirect call, we pop the PC off the stack
    | and shift it *left* one bit.
 
+   | NOTE: Since we have not adjusted SP to leave two bytes of scratch
+   | space, the PC is in S and SH, not T and TH.
+
    0 ( C) STATUS ) bclr  ( clear carry)
-   T rlc  TH w rlc  PCLATH ) st  PCLATU ) clr  PCLATU ) rlc
-   T ld  2 SP adda  callw  ( execute the target word)
+   S rlc  SH w rlc  PCLATH ) st  PCLATU ) clr  PCLATU ) rlc
+   S ld  callw  ( execute the target word)
 
    ( Let's push STATUS. It's helpful to see how code affects the STATUS bits.)
-   STATUS ) X mov  XH clr  1push c
-
-   ( Before returning to chat, move SP back to DP, so host can read it back.)
-   SP ) DP ) movw  ret  ;c
+   STATUS ) S mov  SH clr  ret  ;c
 
 __host
 
-variable .STATUS   | --    nTO   nPD   N     OV    Z     DC    C
-: .status  .STATUS @  binary  <# 4# char _ hold # #> type  2sp ;
+: .status  binary  <# 4# char _ hold # #> type  2sp ;
 
--: radix preserve
+: .regs   radix preserve
    cr  ." N_VZHC    SP"
        (  0_1111  0123  )
    cr    .status
-                .SP .r ;
-
-: forth-regs  [ #] is .regs ;  forth-regs
+                dp@ .w ;
 
 : rx  ( addr)  ( execute target word)
-   ?chat
-   u2/  stack>  \m trampoline runwait  stack<
-   .STATUS !  .regs ;
+   2/  stack>  \m trampoline runwait  stack<  .regs ;
 
 now rx is remote
 

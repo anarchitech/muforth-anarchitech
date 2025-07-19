@@ -22,10 +22,18 @@ dup   2 Mi make-image  make-region flash
 | We need to be able to map from an address in our aspace to one of the
 | regions that it contains.
 
-( If address within ram region, choose ram; otherwise, flash.)
+| within-ram? tests whether a target address is within the bounds of the
+| ram and returns a flag.
+|
+| XXX This currently checks if the address falls within the bounds of the
+| current *device's* ram, but wouldn't this work just as well to use the
+| size of the ram *image*, as defined above?
 
+: within-ram?  ( target - flag)  @ram [ @ram #ram + #] within ;
+
+( If address within ram region, choose ram; otherwise, flash.)
 -: ( target)  ( find a region based on target addr)
-   @ram [ @ram #ram + #] within  if  ram ^  then  flash ;
+   within-ram? if  ram ^  then  flash ;
 
 | Install this chooser into our aspace. We need to have set a region for
 | this to work. It doesn't matter which one; they share the aspace.
@@ -33,7 +41,6 @@ dup   2 Mi make-image  make-region flash
 ram 'choose-image !
 
 ( Initialization.)
-: fill-image   'image #image rot fill ;  ( fills *current* image)
 : wipe
    flash  @flash region!  "ff fill-image
    ram    @ram   region!    0 fill-image ;

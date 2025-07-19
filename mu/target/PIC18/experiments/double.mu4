@@ -1,0 +1,47 @@
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
+
+hex  flash
+ld target/PIC18/kernel.mu4
+0a00 region!
+
+| Helper words for constructing and deconstructing doubles. d> assumes that
+| target values have been sign-extended to 64-bits.
+
+: >d   ( d - lo hi)  dup 0ffff and  dup 8000 and 2* -  swap #16 >> ;
+: d>   ( lo hi - d)  #16 <<  swap 0ffff and + ;
+
+__meta
+
+| WREG ) sbb does the following: WREG + ~WREG + C. WREG + ~WREG is always
+| going to be 0ff; 0ff + C is 0ff if carry 0, 0 if carry 1. This is the
+| opposite of what we want for sign-extending, so we have to complement
+| WREG.
+
+code s>d  ( n - d)
+     TH w rlc   WREG ) sbb  WREG ) com  S st  SH st  1push j  ;c
+   | TH w rlc   WREG ) sbb  WREG ) com  S st  SH st  2 SP suba  ret  ;c
+
+code dinvert
+   T com  TH com  U com  UH com  ret  ;c
+
+( T/TH is the high word; U/UH the low.)
+code dnegate
+   0 ldi  U neg  UH rsbb  T rsbb  TH rsbb  ret  ;c
+
+code d-
+   ' dnegate c  ( fall thru)  ;c
+
+| Add T/U to V/W. T and V are the high words.
+code d+
+   U ld  W add  UH ld  WH adc  T ld  V adc  TH ld  VH adc  2pop j  ;c
+
+code d2*
+   0 ( C) STATUS ) bclr           U rlc  UH rlc   T rlc  TH rlc  ret  ;c
+
+code d2/
+   TH w rlc ( sign -> C)  begin  TH rrc   T rrc  UH rrc   U rrc  ret  ;c
+
+code ud2/  ( or is it du2/ ??)
+   0 ( C) STATUS ) bclr   again  ;c

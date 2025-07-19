@@ -66,7 +66,7 @@ defer verify-quietly  ( - diff)
 : hi
    chatting on  >chat  t.hello  /chunk !
    ram-copied off  copy-ram
-.ifndef noverify  verify-quietly drop  .then
+.ifndef noverify  verify-quietly  .then
    now __chatting is __meta  __meta ;
 
 : chat-via   pop  chat-vector !  hi ;
@@ -76,27 +76,31 @@ defer verify-quietly  ( - diff)
 : 4#   # # # # ;
 : .h16    hex  <#  4#  #> type ;
 : .w   .h16  2sp ;
-: .r   ( addr)  @  .w ;
 
 
 | Since the PIC18 has a *hardware* return stack, we are only going to
 | define the boundaries of the data stack.
 |
-| Put the D stack at the end of ram, for now - leaving one cell of space
-| for the use of chat.
+| Put the D stack at the end of ram, for now.
 
-@ram #ram +  \m cell-  constant dp0
-
-| We'd like numbers that the target would consider negative to be negative
-| on the host stack as well. So let's sign extend stack values when they
-| come back from the target.
-|
-| XXX At the moment, the common stack code doesn't use this, but it should!
-
-: t>h  ( n - n')  ( "target to host")  dup "8000 and if  "1_0000 -  then ;
+@ram #ram +  constant dp0
 
 : stack-write  t.write-data ;
 : stack-read   t.read-data ;
+
+.ifdef 24-bit
+
+3 constant stack-cell
+: stack!         push  >3210  pop  c!+ c!+ c!  drop ;
+: stack@  c@+ c@+ c@ 0  0123> ;
+
+.else
+
+2 constant stack-cell
+: stack!  leh! ;
+: stack@  leh@ ;
+
+.then
 
 ld target/common/stacks.mu4
 
@@ -132,9 +136,20 @@ host-seekeys pic-seekeys  128 cells cmove
    then
    drop ( a) ;
 
+( Show contents as 16-bit words rather than bytes.)
+: 1dump-words  ( a)
+   hex-bytes  ( set field width)
+   >image   dup .addr  dup .hex-cells
+   chatting @ if
+      -valid
+      >chat   dup _addr  dup .hex-cells
+      -valid
+   then
+   drop ;
+
 ( So we can easily look at the signature embedded into the image.)
 : 1dump-chars  ( a)
-   hex-bytes
+   hex-bytes  ( set field width)
    >target
    dup _addr  dup .chars
    dup .addr  dup .hex-bytes
@@ -142,12 +157,14 @@ host-seekeys pic-seekeys  128 cells cmove
 
 pic-seekeys  -1  du-mode dumping        >target  skip+  skip-  1dump        ( a - a')
 pic-seekeys  -1  du-mode dumping-chars  >target  skip+  skip-  1dump-chars  ( a - a')
-pic-seekeys  -1  du-mode disasming      >target  dis+   dis-   1dis         ( a - a')
+pic-seekeys  -2  du-mode dumping-words  >target  skip+  skip-  1dump-words  ( a - a')
+pic-seekeys  -2  du-mode disasming      >target  dis+   dis-   1dis         ( a - a')
 
 pic-seekeys 'seekeys !  ( switch over to our bindings)
 
 key: d  ( a - a 0)   dumping        0 ;
 key: C  ( a - a 0)   dumping-chars  0 ;  ( small c is "call")
+key: w  ( a - a 0)   dumping-words  0 ;
 key: i  ( a - a 0)   disasming      0 ;
 
 host-seekeys 'seekeys !  ( back to host bindings)

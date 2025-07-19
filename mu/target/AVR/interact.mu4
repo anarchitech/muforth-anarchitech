@@ -96,7 +96,7 @@ defer verify-quietly  ( - diff)
 
 : hi
    chatting on  >chat  t.hello  /chunk !
-.ifndef noverify  verify-quietly drop  .then
+.ifndef noverify  verify-quietly  .then
    | now __chatting is __meta  __meta ;  ( XXX why not do this?)
    ;
 
@@ -109,6 +109,10 @@ defer verify-quietly  ( - diff)
 | Define synonyms for reading and writing target stacks.
 : stack-write  t.write-data ;
 : stack-read   t.read-data ;
+
+2 constant stack-cell
+: stack@  leh@ ;
+: stack!  leh! ;
 
 ld target/common/stacks.mu4
 

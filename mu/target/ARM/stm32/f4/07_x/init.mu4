@@ -9,18 +9,18 @@ loading STM32F407xG basic init
 | Unlike the F303 Discovery, the F407 has an external 8 Mhz crystal (8Mhz)
 | attached; however, the 8Mhz signal from the MCO of the ST-LINK is *also*
 | connected (to PH0/OSC_IN). This is unlike the (newer) F411E Discovery,
-| which has the crystal connected, but *not* the MCO. 
+| which has the crystal connected, but *not* the MCO.
 |
 | I have no idea why ST did this; what it means is that we should use the
 | HSE bypass setting (as if no crystal was attached).
 |
 | LEDs:
-| Pin Port Color
-| ~~~ ~~~~ ~~~~~~
-| LD3 PD13 orange                    north
-| LD4 PD12 green              west
-| LD5 PD14 red                                east
-| LD6 PD15 blue                      south
+| Pin  Port  Color
+| ~~~~~~~~~~~~~~~~~~
+| LD3  PD13  orange                  north
+| LD4  PD12  green            west
+| LD5  PD14  red                              east
+| LD6  PD15  blue                    south
 |
 | User button connected to PA0. Weak (220k) pull-down. Shorts to Vdd when pressed.
 
@@ -93,10 +93,12 @@ ld target/ARM/stm32/clock.mu4    ( clock utility words)
    +pll  ( turn PLL back on)
    >pll  ( switch to PLL as sysclk source) ;
 
+ld target/ARM/stm32/f4/gpio.mu4
+
 : led-init
    | Turn on clock to Port D
    ( Ports H__E_DCBA )
-        [ %0000_1000 #] RCC_AHB1ENR set!
+          %0000_1000 enable-gpio
    | Make PD12 to PD15 outputs
    5500_0000 GPIOD_MODER set! ;
 

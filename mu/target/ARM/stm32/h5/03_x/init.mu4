@@ -1,0 +1,60 @@
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
+
+loading STM32H503xB basic init
+
+__meta
+hex
+
+( NOTES about the Nucleo-H503RB board.)
+
+| User button on PC13, which pulls the pin high when pressed; the pin is
+| pulled low via an external resistor; no internal pulldown is necessary.
+|
+| There is only one user LED:
+|
+| Port Led  Color  Drive
+| ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+| PA5  LD2  green  High is on
+|
+| Both LSE (32.768 kHz) and HSE (24 Mhz) crystals have been fitted, and the
+| default state of the solder bridges connects both crystals to the chip.
+
+| For the "programming pod" connections - for programming Atmel/Microchip
+| AVR and 8051, and Microchip PIC - see the following table:
+|
+| Port   CN7   CN10   Arduino
+| ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+| PB3           31     D3
+| PB4           27     D5
+| PB5           29     D4
+| PB6            3    D15
+| PB7            5    D14
+|
+| 3v3    16
+| Gnd    20
+
+| Load a file that defines clock-init, which can set the clock to 48M or
+| 96M.
+ld target/ARM/stm32/h5/clock-48-96.mu4
+
+ld target/ARM/stm32/h5/gpio.mu4
+
+: led-on   [ 1 5 << #] GPIOA_BSRR ! ;     | drive PA5 high
+: led-off  [ 1 5 << #] GPIOA_BRR ! ;      | drive PA5 low
+
+| On H5 family parts, MODER registers reset to all ones (analog mode),
+| unlike older families.
+: led-init
+   | Turn on clock to Port A
+   ( Ports I_HGFE_DCBA )
+          %0_0000_0001 enable-gpio
+   led-off
+   | Make PA5 an output.
+   GPIOA_MODER dup  @  [ %11 5 2* << #] bic  [ %01 5 2* << #] or  swap ! ;
+
+: wait   for next ;
+
+: flash-leds
+   led-on  3_0000 wait  led-off ;
