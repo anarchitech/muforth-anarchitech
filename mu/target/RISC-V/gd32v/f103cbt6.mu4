@@ -1,0 +1,26 @@
+| This file is part of muforth: https://muforth.dev/
+|
+| Copyright 2002-2025 David Frech. (Read the LICENSE for details.)
+
+loading GigaDevice GD32VF103CBT6 chip
+
+"0800_0000 constant @flash
+    128 Ki constant #flash
+
+"2000_0000 constant @ram
+     32 Ki constant #ram
+
+      6 Ki constant #bl-ram  ( ram consumed by bootloader)
+                             ( determined empirically!)
+
+      1 Ki constant /page  ( erase page size)
+
+( GD32VF103 is an RV32IMAC core.)
+-d xlen32
+-d M-ext  -d A-ext  -d C-ext
+
+| load chip equates
+ld target/RISC-V/gd32v/f103cbt6/equates.mu4
+
+| Everything else!
+ld! target/RISC-V/build.mu4
